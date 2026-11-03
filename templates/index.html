@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCTV AI Head Counter | Live Surveillance Analytics</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              emerald: '#10b981',
+              cyan: '#06b6d4',
+              dark: '#0b0f17',
+              panel: '#111827',
+              border: '#1f2937'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .live-dot {
+      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .hud-glow {
+      text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    }
+    .hud-glow-cyan {
+      text-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-[#0b0f17] text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 bg-[#111827]/80 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight text-white">CCTV Live Head Counter</h1>
+          <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+            LIVE
+          </span>
+        </div>
+        <p class="text-xs text-gray-400">Calance CCTV Surveillance System &bull; Live In-Frame Head Counting</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Export CSV Log
+      </button>
+      <button onclick="resetMetrics()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/40 transition">
+        Reset Counts
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left / Center: Video Stream + Primary Counters (8 Cols) -->
+    <div class="lg:col-span-8 flex flex-col gap-5">
+      
+      <!-- KPI Stats Banner -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        
+        <!-- Live Head Count Card -->
+        <div class="bg-[#111827] border border-emerald-500/30 rounded-xl p-4 shadow-lg relative overflow-hidden">
+          <div class="absolute -right-3 -bottom-3 text-emerald-500/10 pointer-events-none">
+            <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2a5 5 0 105 5 5 5 0 00-5-5zm0 12c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z"/>
+            </svg>
+          </div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400/80">Live In-Frame Heads</p>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="metric-live-heads" class="text-4xl font-extrabold text-emerald-400 hud-glow tracking-tight">0</span>
+            <span class="text-xs text-gray-400">heads now</span>
+          </div>
+        </div>
+
+        <!-- Peak Count -->
+        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Peak Head Count</p>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="metric-peak-heads" class="text-3xl font-bold text-gray-100 tracking-tight">0</span>
+            <span class="text-xs text-gray-500">max in frame</span>
+          </div>
+        </div>
+
+        <!-- Line Crossings (In / Out) -->
+        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-cyan-400/80">Tripwire Crossing</p>
+          <div class="mt-2 flex items-baseline gap-3">
+            <div>
+              <span id="metric-in-count" class="text-2xl font-bold text-cyan-400">0</span>
+              <span class="text-[10px] text-gray-400 block uppercase">IN</span>
+            </div>
+            <span class="text-gray-600 font-bold">/</span>
+            <div>
+              <span id="metric-out-count" class="text-2xl font-bold text-amber-400">0</span>
+              <span class="text-[10px] text-gray-400 block uppercase">OUT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Unique Footfall -->
+        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-purple-400/80">Total Footfall</p>
+          <div class="mt-2 flex items-baseline gap-2">
+            <span id="metric-unique-heads-card" class="text-3xl font-bold text-purple-300 tracking-tight">0</span>
+            <span class="text-xs text-gray-500">visitors</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live CCTV Video Player Viewport -->
+      <div class="bg-black rounded-xl border border-gray-800 overflow-hidden shadow-2xl relative group">
+        
+        <!-- Video Stream Image -->
+        <div class="relative w-full aspect-video bg-neutral-950 flex items-center justify-center overflow-hidden">
+          <img 
+            id="video-stream" 
+            src="/api/frame" 
+            alt="Live CCTV Head Count Feed" 
+            class="w-full h-full object-contain select-none"
+            onerror="onStreamError()"
+          />
+          
+          <!-- Stream Overlay HUD Stamp -->
+          <div class="absolute top-3 left-4 flex items-center gap-2 pointer-events-none">
+            <div class="bg-black/60 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+              <span id="current-source-label">CAM 01 - CONCOURSE</span>
+            </div>
+            <div class="bg-black/60 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-gray-300 border border-gray-700/40" id="live-clock">
+              00:00:00 UTC
+            </div>
+          </div>
+
+          <!-- Quick Action Floating Buttons -->
+          <div class="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 transition">
+            <button onclick="toggleStreamPause()" id="pause-btn" title="Pause/Resume Feed" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <button onclick="takeSnapshot()" title="Capture Snapshot" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <button onclick="toggleFullscreen()" title="Fullscreen" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5m-7 11l-5 5m0 0h4m-4 0v-4m16 4v-4m0 4h-4m4 0l-5-5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Video Source Info Bar -->
+        <div class="p-3 bg-[#0f141f] border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1.5 text-gray-300">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              Model: <strong id="current-model-label" class="text-cyan-300 font-medium">YOLO11 Nano Head</strong>
+            </span>
+            <span class="text-gray-600">|</span>
+            <span>Total Unique Visitors: <strong id="metric-unique-heads" class="text-gray-200">0</strong></span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-emerald-400 font-mono">Stream Active</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Real-time Temporal Chart: Head Count Over Time -->
+      <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+            </svg>
+            <h3 class="text-sm font-semibold text-gray-200">Live Headcount Timeline (Last 60 Seconds)</h3>
+          </div>
+          <span class="text-xs text-gray-500">Auto-refreshing 1Hz</span>
+        </div>
+        <div class="h-44 w-full">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: CCTV Source & AI Settings Panel (4 Cols) -->
+    <div class="lg:col-span-4 flex flex-col gap-5">
+      
+      <!-- Video Source Selection Card -->
+      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2 mb-4">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          CCTV Video Feed Source
+        </h2>
+
+        <!-- Source Mode Tabs -->
+        <div class="grid grid-cols-4 gap-1 p-1 bg-gray-900 rounded-lg text-xs font-medium mb-4">
+          <button onclick="setTab('demo')" id="tab-demo" class="py-1.5 px-2 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold transition">Demo</button>
+          <button onclick="setTab('webcam')" id="tab-webcam" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">Webcam</button>
+          <button onclick="setTab('rtsp')" id="tab-rtsp" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">RTSP</button>
+          <button onclick="setTab('upload')" id="tab-upload" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">Upload</button>
+        </div>
+
+        <!-- Tab 1: CCTV Surveillance Channels -->
+        <div id="content-demo" class="space-y-2.5">
+          <p class="text-xs text-gray-400 font-medium">Select Surveillance Camera Channel:</p>
+          <div class="space-y-2">
+            <button onclick="applyDemoChannel('demo1')" id="btn-demo1" class="w-full py-2 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold text-left flex items-center justify-between transition">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+                CAM 01: Concourse Crowd
+              </span>
+              <span id="badge-demo1" class="text-[10px] text-emerald-400 uppercase font-mono tracking-wider">Active</span>
+            </button>
+            <button onclick="applyDemoChannel('demo2')" id="btn-demo2" class="w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                CAM 02: Pedestrian Walkway
+              </span>
+              <span id="badge-demo2" class="text-[10px] text-gray-500 uppercase font-mono tracking-wider">Standby</span>
+            </button>
+            <button onclick="applyDemoChannel('demo3')" id="btn-demo3" class="w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                CAM 03: Entry Corridor
+              </span>
+              <span id="badge-demo3" class="text-[10px] text-gray-500 uppercase font-mono tracking-wider">Standby</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Webcam -->
+        <div id="content-webcam" class="space-y-3 hidden">
+          <p class="text-xs text-gray-400">Connect to your local camera / USB capture device.</p>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 whitespace-nowrap">Camera Index:</label>
+            <input type="number" id="webcam-index" value="0" min="0" max="5" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1 text-xs text-white w-20 focus:outline-none focus:border-cyan-500">
+          </div>
+          <button onclick="applySource('webcam')" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+            Connect Live Camera
+          </button>
+        </div>
+
+        <!-- Tab 3: RTSP / IP Camera -->
+        <div id="content-rtsp" class="space-y-3 hidden">
+          <p class="text-xs text-gray-400">Stream directly from your NVR, DVR, or IP CCTV camera via RTSP / HTTP URL.</p>
+          <div>
+            <input type="text" id="rtsp-url" placeholder="rtsp://admin:pass@192.168.1.100:554/stream1" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-cyan-500">
+          </div>
+          <button onclick="applySource('rtsp')" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+            Connect RTSP Stream
+          </button>
+        </div>
+
+        <!-- Tab 4: Upload Video File -->
+        <div id="content-upload" class="space-y-3 hidden">
+          <p class="text-xs text-gray-400">Upload any CCTV surveillance video (.mp4, .avi, .mov, .mkv).</p>
+          <input type="file" id="video-file-input" accept="video/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-gray-800 file:text-gray-200 hover:file:bg-gray-700 cursor-pointer">
+          <button onclick="uploadVideo()" id="upload-btn" class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+            Upload & Start Head Count
+          </button>
+          <div id="upload-status" class="text-xs text-emerald-400 hidden"></div>
+        </div>
+
+      </div>
+
+      <!-- Surveillance Model & Tuning Card -->
+      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg space-y-4">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          </svg>
+          Surveillance Detection Engine
+        </h2>
+
+        <!-- Model Select -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Detection Architecture</label>
+          <select id="model-select" onchange="changeModel()" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">
+            <option value="yolo11n-head" selected>YOLO11 Nano Head (High-Speed CCTV Optimized)</option>
+            <option value="yolov8s-head">YOLOv8 Small Head (High Accuracy Dense Crowds)</option>
+            <option value="yolo11n-person">YOLO11 Nano Person (Full-Body Tracking)</option>
+          </select>
+        </div>
+
+        <!-- Confidence Slider -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="text-gray-400">Detection Sensitivity</span>
+            <span id="conf-val" class="text-emerald-400 font-mono font-semibold">25%</span>
+          </div>
+          <input 
+            type="range" 
+            id="conf-slider" 
+            min="0.10" 
+            max="0.80" 
+            step="0.05" 
+            value="0.25" 
+            oninput="updateConf(this.value)"
+            class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          >
+          <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+            <span>High Sensitivity (10%)</span>
+            <span>Strict Filtering (80%)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced CCTV Tripwire & ROI Setup -->
+      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg space-y-3.5">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+          </svg>
+          Tripwire & Monitoring Zones
+        </h2>
+        <p class="text-xs text-gray-400">Configure virtual counting tripwires or monitored bounding zones for perimeter headcounts.</p>
+
+        <div class="flex items-center gap-2">
+          <button onclick="toggleTripwire()" id="tripwire-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition">
+            Enable Tripwire Line
+          </button>
+          <button onclick="toggleROI()" id="roi-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition">
+            Enable ROI Zone
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-gray-800/80 bg-[#0d121c] py-3 px-6 text-center text-xs text-gray-500">
+    CCTV Live Surveillance Analytics &bull; Real-Time Head Detection &amp; Multi-Object Tracking Engine
+  </footer>
+
+  <!-- Client-side Logic -->
+  <script>
+    let isPaused = false;
+    let tripwireEnabled = false;
+    let roiEnabled = false;
+
+    // Initialize Chart.js
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+    const chartData = {
+      labels: [],
+      datasets: [{
+        label: 'Live Head Count',
+        data: [],
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 2,
+        tension: 0.35,
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 5
+      }]
+    };
+    const timelineChart = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        scales: {
+          x: {
+            display: false,
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: 15,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#9ca3af', font: { size: 10 } }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+
+    // Real-time Metrics Polling Loop (every 800ms)
+    async function pollMetrics() {
+      try {
+        const resp = await fetch('/api/status');
+        if (resp.ok) {
+          const data = await resp.json();
+          document.getElementById('metric-live-heads').innerText = data.current_head_count;
+          document.getElementById('metric-peak-heads').innerText = data.peak_head_count;
+          document.getElementById('metric-unique-heads').innerText = data.total_unique_heads;
+          if (document.getElementById('metric-unique-heads-card')) {
+            document.getElementById('metric-unique-heads-card').innerText = data.total_unique_heads;
+          }
+          document.getElementById('metric-in-count').innerText = data.in_count;
+          document.getElementById('metric-out-count').innerText = data.out_count;
+        }
+      } catch (err) {
+        // network retry
+      }
+    }
+    setInterval(pollMetrics, 800);
+
+    // Timeline Chart History Polling (every 1s)
+    async function pollHistory() {
+      try {
+        const resp = await fetch('/api/history');
+        if (resp.ok) {
+          const history = await resp.json();
+          if (history.length > 0) {
+            chartData.labels = history.map((_, i) => i);
+            chartData.datasets[0].data = history.map(item => item.count);
+            timelineChart.update('none');
+          }
+        }
+      } catch (err) {}
+    }
+    setInterval(pollHistory, 1000);
+
+    // Live Clock updater
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('live-clock').innerText = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Source Tab Switching
+    function setTab(tab) {
+      ['demo', 'webcam', 'rtsp', 'upload'].forEach(t => {
+        const tabBtn = document.getElementById(`tab-${t}`);
+        const content = document.getElementById(`content-${t}`);
+        if (t === tab) {
+          tabBtn.className = 'py-1.5 px-2 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold transition';
+          content.classList.remove('hidden');
+        } else {
+          tabBtn.className = 'py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition';
+          content.classList.add('hidden');
+        }
+      });
+    }
+
+    // Switch CCTV Demo Channels
+    async function applyDemoChannel(demoId) {
+      const labels = {
+        'demo1': 'CAM 01 - CONCOURSE',
+        'demo2': 'CAM 02 - WALKWAY',
+        'demo3': 'CAM 03 - CORRIDOR'
+      };
+      ['demo1', 'demo2', 'demo3'].forEach(id => {
+        const btn = document.getElementById(`btn-${id}`);
+        const badge = document.getElementById(`badge-${id}`);
+        if (id === demoId) {
+          btn.className = 'w-full py-2 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold text-left flex items-center justify-between transition';
+          badge.className = 'text-[10px] text-emerald-400 uppercase font-mono tracking-wider';
+          badge.innerText = 'Active';
+        } else {
+          btn.className = 'w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition';
+          badge.className = 'text-[10px] text-gray-500 uppercase font-mono tracking-wider';
+          badge.innerText = 'Standby';
+        }
+      });
+      document.getElementById('current-source-label').innerText = labels[demoId] || 'CCTV LIVE';
+
+      await fetch('/api/set_source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_type: demoId })
+      });
+    }
+
+    // Apply Video Source
+    async function applySource(type) {
+      let payload = {};
+      if (type === 'demo') {
+        payload = { source_type: 'demo1' };
+        document.getElementById('current-source-label').innerText = 'CAM 01 - CONCOURSE';
+      } else if (type === 'webcam') {
+        const idx = document.getElementById('webcam-index').value;
+        payload = { source_type: 'webcam', index: parseInt(idx) };
+        document.getElementById('current-source-label').innerText = `WEBCAM #${idx}`;
+      } else if (type === 'rtsp') {
+        const url = document.getElementById('rtsp-url').value;
+        if (!url) return alert('Please enter an RTSP stream URL');
+        payload = { source_type: 'rtsp', url: url };
+        document.getElementById('current-source-label').innerText = 'RTSP CCTV';
+      }
+
+      const res = await fetch('/api/set_source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert('Failed to switch source: ' + (data.error || 'Unknown error'));
+      }
+    }
+
+    // Upload custom video
+    async function uploadVideo() {
+      const input = document.getElementById('video-file-input');
+      if (!input.files || input.files.length === 0) {
+        return alert('Please select a video file first');
+      }
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const statusEl = document.getElementById('upload-status');
+      statusEl.classList.remove('hidden');
+      statusEl.innerText = 'Uploading video...';
+
+      const res = await fetch('/api/upload_video', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.innerText = `Uploaded: ${data.filename}`;
+        document.getElementById('current-source-label').innerText = data.filename;
+      } else {
+        statusEl.innerText = 'Upload failed: ' + (data.error || 'Unknown error');
+      }
+    }
+
+    // Smooth Continuous Frame Streamer (Cloudflare, Safari & Localhost safe)
+    let isStreaming = true;
+    function streamFrames() {
+      if (!isStreaming) return;
+      const img = document.getElementById('video-stream');
+      const tempImg = new Image();
+      tempImg.onload = () => {
+        img.src = tempImg.src;
+        setTimeout(streamFrames, 30);
+      };
+      tempImg.onerror = () => {
+        setTimeout(streamFrames, 400);
+      };
+      tempImg.src = '/api/frame?t=' + Date.now();
+    }
+    streamFrames();
+
+    function refreshStream() {}
+    function onStreamError() {}
+
+    // Model Change
+    async function changeModel() {
+      const model = document.getElementById('model-select').value;
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_name: model })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const text = document.getElementById('model-select').options[document.getElementById('model-select').selectedIndex].text;
+        document.getElementById('current-model-label').innerText = text.split('(')[0].trim();
+      }
+    }
+
+    // Confidence Slider
+    async function updateConf(val) {
+      document.getElementById('conf-val').innerText = `${Math.round(val * 100)}%`;
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conf_threshold: parseFloat(val) })
+      });
+    }
+
+    // Overlays Toggle
+    async function toggleOverlay(type, checked) {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overlay_type: type, enabled: checked })
+      });
+    }
+
+    // Tripwire Toggle
+    async function toggleTripwire() {
+      tripwireEnabled = !tripwireEnabled;
+      const btn = document.getElementById('tripwire-btn');
+      if (tripwireEnabled) {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-cyan-600 text-white text-xs font-semibold shadow transition';
+        btn.innerText = 'Tripwire Active';
+        await fetch('/api/tripwire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: true })
+        });
+      } else {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-gray-800 text-gray-300 text-xs font-medium border border-gray-700 transition';
+        btn.innerText = 'Enable Tripwire Line';
+        await fetch('/api/tripwire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: false })
+        });
+      }
+    }
+
+    // ROI Zone Toggle
+    async function toggleROI() {
+      roiEnabled = !roiEnabled;
+      const btn = document.getElementById('roi-btn');
+      if (roiEnabled) {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold shadow transition';
+        btn.innerText = 'ROI Zone Active';
+        await fetch('/api/roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: true })
+        });
+      } else {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-gray-800 text-gray-300 text-xs font-medium border border-gray-700 transition';
+        btn.innerText = 'Enable ROI Zone';
+        await fetch('/api/roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: false })
+        });
+      }
+    }
+
+    // Controls
+    async function toggleStreamPause() {
+      isPaused = !isPaused;
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_paused: isPaused })
+      });
+      document.getElementById('pause-btn').innerHTML = isPaused ?
+        '<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' :
+        '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+    }
+
+    function toggleFullscreen() {
+      const container = document.getElementById('video-stream');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => alert(err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    function takeSnapshot() {
+      const img = document.getElementById('video-stream');
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || 640;
+      canvas.height = img.naturalHeight || 360;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const link = document.createElement('a');
+      link.download = `cctv_headcount_${Date.now()}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg');
+      link.click();
+    }
+
+    async function resetMetrics() {
+      if (confirm('Reset peak count, unique IDs and crossing counters?')) {
+        await fetch('/api/reset_counts', { method: 'POST' });
+        pollMetrics();
+      }
+    }
+
+    function exportCSV() {
+      window.location.href = '/api/export_csv';
+    }
+  </script>
+</body>
+</html>
+
