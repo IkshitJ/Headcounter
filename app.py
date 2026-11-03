@@ -94,7 +94,19 @@ def video_feed():
         }
     )
 
-
+@app.get("/api/frame")
+def get_frame():
+    """Returns the latest annotated JPEG frame (Cloudflare & Safari safe)."""
+    frame_bytes = pipeline.get_current_frame_jpeg()
+    return Response(
+        content=frame_bytes,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 @app.get("/api/status")
 def get_status() -> Dict[str, Any]:
     """Returns current live head count, peak count, FPS, and detection metrics."""
