@@ -330,7 +330,27 @@ class VideoPipeline:
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
             )
+    def get_current_frame_jpeg(self) -> bytes:
+        """Fetches, processes, and encodes a single frame on demand."""
+        if self.cap is None or not self.cap.isOpened():
+            if not self.open_source(self.source):
+                err = self._create_error_frame("VIDEO SOURCE NOT FOUND", "Upload a video clip on the right to start")
+                ret, buf = cv2.imencode(".jpg", err, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                return buf.tobytes() if ret else b""
 
+        success, frame = self.cap.read()
+        if not success:
+            if isinstance(self.source, str) and os.path.exists(self.source):
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                success, frame = self.cap.read()
+            if not success:
+                err = self._create_error_frame("STREAM ENDED", "Waiting for video input...")
+                ret, buf = cv2.imencode(".jpg", err, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                return buf.tobytes() if ret else b""
+
+        annotated_frame, _ = self.process_frame(frame)
+        ret, buf = cv2.imencode(".jpg", annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+        return buf.tobytes() if ret else b""
     def process_video_file(
         self,
         input_path: str,
