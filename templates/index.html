@@ -145,13 +145,7 @@
         
         <!-- Video Stream Image -->
         <div class="relative w-full aspect-video bg-neutral-950 flex items-center justify-center overflow-hidden">
-          <img 
-            id="video-stream" 
-            src="/video_feed" 
-            alt="Live CCTV Head Count Feed" 
-            class="w-full h-full object-contain select-none"
-            onerror="onStreamError()"
-          />
+          <img id="video-stream" src="/api/frame" alt="Live CCTV Head Count Feed" ...
           
           <!-- Stream Overlay HUD Stamp -->
           <div class="absolute top-3 left-4 flex items-center gap-2 pointer-events-none">
