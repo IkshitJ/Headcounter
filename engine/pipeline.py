@@ -60,6 +60,8 @@ class VideoPipeline:
         )
         self.tracker = HeadTracker()
         self.counter = HeadCounter()
+        self.raw_counting_line: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
+        self.raw_roi_polygon: Optional[List[Tuple[float, float]]] = None
 
         # Video Capture handle
         self.cap: Optional[cv2.VideoCapture] = None
@@ -118,19 +120,52 @@ class VideoPipeline:
         self.conf_threshold = conf
         self.detector.conf_threshold = conf
 
-    def set_counting_line(self, pt1: Tuple[float, float], pt2: Tuple[float, float]):
-        """Sets virtual tripwire coordinates for IN/OUT counting."""
-        self.counter.set_counting_line(pt1, pt2)
+    def set_counting_line(self, pt1: Optional[Tuple[float, float]], pt2: Optional[Tuple[float, float]]):
+        """Sets virtual tripwire coordinates for IN/OUT counting (normalized 0.0-1.0 or pixels)."""
+        if pt1 is None or pt2 is None:
+            self.raw_counting_line = None
+            self.counter.counting_line = None
+        else:
+            self.raw_counting_line = (pt1, pt2)
 
-    def set_roi_polygon(self, points: List[Tuple[float, float]]):
-        """Sets monitored region of interest polygon points."""
-        self.counter.set_roi_polygon(points)
+    def set_roi_polygon(self, points: Optional[List[Tuple[float, float]]]):
+        """Sets monitored region of interest polygon points (normalized 0.0-1.0 or pixels)."""
+        if not points:
+            self.raw_roi_polygon = None
+            self.counter.roi_polygon = None
+        else:
+            self.raw_roi_polygon = points
 
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Dict[str, Any]]:
         """
         Process a single image/video frame through detection, tracking, counting, and rendering.
         """
         start_t = time.time()
+        h, w = frame.shape[:2]
+
+        # Resolution-aware tripwire mapping (supports normalized 0.0-1.0 or pixel coordinates)
+        if self.raw_counting_line:
+            p1, p2 = self.raw_counting_line
+            if p1[0] <= 1.05 and p1[1] <= 1.05 and p2[0] <= 1.05 and p2[1] <= 1.05:
+                self.counter.counting_line = (
+                    (float(p1[0]) * w, float(p1[1]) * h),
+                    (float(p2[0]) * w, float(p2[1]) * h)
+                )
+            else:
+                self.counter.counting_line = (p1, p2)
+        else:
+            self.counter.counting_line = None
+
+        # Resolution-aware ROI mapping (supports normalized 0.0-1.0 or pixel coordinates)
+        if self.raw_roi_polygon and len(self.raw_roi_polygon) >= 3:
+            if all(p[0] <= 1.05 and p[1] <= 1.05 for p in self.raw_roi_polygon):
+                self.counter.roi_polygon = [
+                    (float(p[0]) * w, float(p[1]) * h) for p in self.raw_roi_polygon
+                ]
+            else:
+                self.counter.roi_polygon = self.raw_roi_polygon
+        else:
+            self.counter.roi_polygon = None
 
         # 1. Detect Heads
         raw_detections = self.detector.detect(frame)
@@ -153,6 +188,8 @@ class VideoPipeline:
 
         counts["fps"] = round(self.fps, 1)
         counts["latency_ms"] = round(self.latency_ms, 1)
+        counts["frame_width"] = w
+        counts["frame_height"] = h
         self.current_metrics = counts
 
         # 4. Draw Visual Overlays
@@ -182,7 +219,7 @@ class VideoPipeline:
                 (pts[0][0][0], max(20, pts[0][0][1] - 8)),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (255, 200, 50),
+                (230, 230, 230),
                 1,
                 cv2.LINE_AA
             )
@@ -192,16 +229,16 @@ class VideoPipeline:
             p1, p2 = self.counter.counting_line
             p1_i = (int(p1[0]), int(p1[1]))
             p2_i = (int(p2[0]), int(p2[1]))
-            cv2.line(frame, p1_i, p2_i, COLOR_TRIPWIRE_LINE, 3, cv2.LINE_AA)
-            cv2.circle(frame, p1_i, 5, (0, 255, 255), -1)
-            cv2.circle(frame, p2_i, 5, (0, 255, 255), -1)
+            cv2.line(frame, p1_i, p2_i, COLOR_TRIPWIRE_LINE, 2, cv2.LINE_AA)
+            cv2.circle(frame, p1_i, 4, (250, 250, 250), -1)
+            cv2.circle(frame, p2_i, 4, (250, 250, 250), -1)
             cv2.putText(
                 frame,
                 "TRIPWIRE COUNT LINE",
                 (p1_i[0] + 10, p1_i[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 200, 255),
+                0.45,
+                (240, 240, 240),
                 1,
                 cv2.LINE_AA
             )
@@ -214,13 +251,14 @@ class VideoPipeline:
             conf = head["confidence"]
             history = head.get("history", [])
 
-            # Movement Trajectory Trail
+            # Movement Trajectory Trail (Monochrome Fading White)
             if self.show_trails and len(history) > 1:
                 for j in range(1, len(history)):
                     pt_a = (int(history[j - 1][0]), int(history[j - 1][1]))
                     pt_b = (int(history[j][0]), int(history[j][1]))
                     alpha = float(j) / len(history)
-                    color = (int(0 * alpha), int(255 * alpha), int(255 * (1 - alpha)))
+                    g_val = int(220 * alpha)
+                    color = (g_val, g_val, g_val)
                     thickness = max(1, int(2 * alpha))
                     cv2.line(frame, pt_a, pt_b, color, thickness, cv2.LINE_AA)
 
@@ -230,8 +268,8 @@ class VideoPipeline:
 
                 # Head Center Crosshair / Point
                 if self.show_crosshairs:
-                    cv2.circle(frame, (cx, cy), 4, COLOR_HEAD_CENTER, -1, cv2.LINE_AA)
-                    cv2.circle(frame, (cx, cy), 7, COLOR_CROSSHAIR_RING, 1, cv2.LINE_AA)
+                    cv2.circle(frame, (cx, cy), 3, COLOR_HEAD_CENTER, -1, cv2.LINE_AA)
+                    cv2.circle(frame, (cx, cy), 6, COLOR_CROSSHAIR_RING, 1, cv2.LINE_AA)
 
                 # Head Tag Pill
                 label = f"Head #{track_id} {int(conf * 100)}%"
@@ -241,7 +279,7 @@ class VideoPipeline:
                     frame,
                     (x1, tag_y - th - 4),
                     (x1 + tw + 6, tag_y + baseline - 2),
-                    (20, 25, 30),
+                    (10, 10, 10),
                     -1
                 )
                 cv2.rectangle(
@@ -257,7 +295,7 @@ class VideoPipeline:
                     (x1 + 3, tag_y - 2),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.45,
-                    (255, 255, 255),
+                    (245, 245, 245),
                     1,
                     cv2.LINE_AA
                 )
@@ -267,26 +305,26 @@ class VideoPipeline:
             hud_height = 55
             overlay = frame.copy()
             cv2.rectangle(overlay, (0, 0), (w, hud_height), COLOR_HUD_BACKGROUND, -1)
-            cv2.addWeighted(overlay, 0.75, frame, 0.25, 0, frame)
-            cv2.line(frame, (0, hud_height), (w, hud_height), COLOR_HEAD_BOX, 1)
+            cv2.addWeighted(overlay, 0.85, frame, 0.15, 0, frame)
+            cv2.line(frame, (0, hud_height), (w, hud_height), (90, 90, 90), 1)
 
-            # Live Head Count Badge
+            # Live Head Count Badge (Monochrome Pale White)
             head_cnt_str = f"LIVE HEAD COUNT: {counts['current_head_count']}"
-            cv2.putText(frame, head_cnt_str, (18, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.85, COLOR_HEAD_BOX, 2, cv2.LINE_AA)
+            cv2.putText(frame, head_cnt_str, (18, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (250, 250, 250), 2, cv2.LINE_AA)
 
             # Peak Count
             peak_str = f"PEAK: {counts['peak_head_count']}"
-            cv2.putText(frame, peak_str, (320, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
+            cv2.putText(frame, peak_str, (320, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
 
             # In / Out Crossings (if any)
             if counts.get("in_count", 0) > 0 or counts.get("out_count", 0) > 0:
                 flow_str = f"IN: {counts['in_count']} | OUT: {counts['out_count']}"
-                cv2.putText(frame, flow_str, (460, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 215, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, flow_str, (460, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
 
             # CCTV Live Recording Status
             status_str = "REC [1080P HD]"
             (pw, _), _ = cv2.getTextSize(status_str, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.circle(frame, (w - pw - 28, 30), 4, (0, 0, 255), -1)
+            cv2.circle(frame, (w - pw - 28, 30), 4, (240, 240, 240), -1)
             cv2.putText(frame, status_str, (w - pw - 18, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1, cv2.LINE_AA)
 
         return frame
@@ -294,14 +332,14 @@ class VideoPipeline:
     def _create_error_frame(self, title: str, subtitle: str = "") -> np.ndarray:
         """Generates a fallback informational HUD frame if video source fails or is missing."""
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        frame[:] = (18, 22, 30)  # Dark surveillance background
-        cv2.rectangle(frame, (8, 8), (632, 472), (60, 70, 90), 2)
-        cv2.putText(frame, "CCTV SURVEILLANCE FEED - STANDBY", (30, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 128), 2, cv2.LINE_AA)
-        cv2.line(frame, (8, 65), (632, 65), (60, 70, 90), 1)
-        cv2.putText(frame, title, (30, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2, cv2.LINE_AA)
+        frame[:] = (10, 10, 10)  # Pure dark monochrome
+        cv2.rectangle(frame, (8, 8), (632, 472), (60, 60, 60), 1)
+        cv2.putText(frame, "CCTV SURVEILLANCE FEED - STANDBY", (30, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1, cv2.LINE_AA)
+        cv2.line(frame, (8, 65), (632, 65), (50, 50, 50), 1)
+        cv2.putText(frame, title, (30, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (245, 245, 245), 2, cv2.LINE_AA)
         if subtitle:
-            cv2.putText(frame, subtitle, (30, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 190, 205), 1, cv2.LINE_AA)
-        cv2.putText(frame, "Tip: Use the 'Upload' tab on the right panel to upload a CCTV video clip.", (30, 310), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 220, 255), 1, cv2.LINE_AA)
+            cv2.putText(frame, subtitle, (30, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (170, 170, 170), 1, cv2.LINE_AA)
+        cv2.putText(frame, "Select a channel on the right panel or upload video.", (30, 310), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (140, 140, 140), 1, cv2.LINE_AA)
         return frame
 
     def stream_generator(self) -> Generator[bytes, None, None]:

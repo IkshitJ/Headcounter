@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCTV AI Head Counter | Live Surveillance Analytics</title>
+  <title>CCTV Live Head Counter | Surveillance Analytics</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js -->
@@ -14,12 +14,15 @@
       theme: {
         extend: {
           colors: {
-            brand: {
-              emerald: '#10b981',
-              cyan: '#06b6d4',
-              dark: '#0b0f17',
-              panel: '#111827',
-              border: '#1f2937'
+            mono: {
+              black: '#000000',
+              panel: '#0a0a0a',
+              card: '#111111',
+              border: '#242424',
+              muted: '#737373',
+              subtle: '#a3a3a3',
+              white: '#ffffff',
+              pale: '#f5f5f5'
             }
           }
         }
@@ -29,25 +32,32 @@
   <style>
     @keyframes pulse-slow {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50% { opacity: 0.3; }
     }
     .live-dot {
       animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
-    .hud-glow {
-      text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    .pale-glow {
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
     }
-    .hud-glow-cyan {
-      text-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+    .cursor-nwse-resize { cursor: nwse-resize !important; }
+    .cursor-nesw-resize { cursor: nesw-resize !important; }
+    .cursor-ns-resize { cursor: ns-resize !important; }
+    .cursor-ew-resize { cursor: ew-resize !important; }
+    .cursor-move { cursor: move !important; }
+    .cursor-crosshair { cursor: crosshair !important; }
+    #interactive-overlay circle:hover {
+      r: 10px;
+      transition: r 0.15s ease-out;
     }
   </style>
 </head>
-<body class="bg-[#0b0f17] text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+<body class="bg-black text-neutral-100 min-h-screen font-sans antialiased flex flex-col">
 
   <!-- Header -->
-  <header class="border-b border-gray-800 bg-[#111827]/80 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-lg">
+  <header class="border-b border-neutral-800 bg-black/90 backdrop-blur sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-2xl">
     <div class="flex items-center gap-3">
-      <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+      <div class="p-2 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
@@ -55,23 +65,23 @@
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-lg font-bold tracking-tight text-white">CCTV Live Head Counter</h1>
-          <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+          <span class="px-2 py-0.5 text-xs font-semibold rounded bg-neutral-900 text-white border border-neutral-700 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-white live-dot"></span>
             LIVE
           </span>
         </div>
-        <p class="text-xs text-gray-400">Calance CCTV Surveillance System &bull; Live In-Frame Head Counting</p>
+        <p class="text-xs text-neutral-400">Calance CCTV Surveillance System &bull; Live In-Frame Head Counting</p>
       </div>
     </div>
 
     <div class="flex items-center gap-3">
-      <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition flex items-center gap-1.5">
-        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 transition flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
         Export CSV Log
       </button>
-      <button onclick="resetMetrics()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/40 transition">
+      <button onclick="resetMetrics()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 transition">
         Reset Counts
       </button>
     </div>
@@ -83,124 +93,207 @@
     <!-- Left / Center: Video Stream + Primary Counters (8 Cols) -->
     <div class="lg:col-span-8 flex flex-col gap-5">
       
-      <!-- KPI Stats Banner -->
+      <!-- KPI Stats Banner (Pale White & Black Monochrome) -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         
         <!-- Live Head Count Card -->
-        <div class="bg-[#111827] border border-emerald-500/30 rounded-xl p-4 shadow-lg relative overflow-hidden">
-          <div class="absolute -right-3 -bottom-3 text-emerald-500/10 pointer-events-none">
-            <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2a5 5 0 105 5 5 5 0 00-5-5zm0 12c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z"/>
-            </svg>
-          </div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400/80">Live In-Frame Heads</p>
+        <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-4 shadow-lg relative">
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Live In-Frame Heads</p>
           <div class="mt-2 flex items-baseline gap-2">
-            <span id="metric-live-heads" class="text-4xl font-extrabold text-emerald-400 hud-glow tracking-tight">0</span>
-            <span class="text-xs text-gray-400">heads now</span>
+            <span id="metric-live-heads" class="text-4xl font-extrabold text-white pale-glow tracking-tight">0</span>
+            <span class="text-xs text-neutral-400">heads now</span>
           </div>
         </div>
 
         <!-- Peak Count -->
-        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
-          <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Peak Head Count</p>
+        <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Peak Head Count</p>
           <div class="mt-2 flex items-baseline gap-2">
-            <span id="metric-peak-heads" class="text-3xl font-bold text-gray-100 tracking-tight">0</span>
-            <span class="text-xs text-gray-500">max in frame</span>
+            <span id="metric-peak-heads" class="text-3xl font-bold text-neutral-200 tracking-tight">0</span>
+            <span class="text-xs text-neutral-500">max in frame</span>
           </div>
         </div>
 
         <!-- Line Crossings (In / Out) -->
-        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
-          <p class="text-xs font-semibold uppercase tracking-wider text-cyan-400/80">Tripwire Crossing</p>
+        <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Tripwire Crossing</p>
           <div class="mt-2 flex items-baseline gap-3">
             <div>
-              <span id="metric-in-count" class="text-2xl font-bold text-cyan-400">0</span>
-              <span class="text-[10px] text-gray-400 block uppercase">IN</span>
+              <span id="metric-in-count" class="text-2xl font-bold text-white">0</span>
+              <span class="text-[10px] text-neutral-500 block uppercase">IN</span>
             </div>
-            <span class="text-gray-600 font-bold">/</span>
+            <span class="text-neutral-700 font-bold">/</span>
             <div>
-              <span id="metric-out-count" class="text-2xl font-bold text-amber-400">0</span>
-              <span class="text-[10px] text-gray-400 block uppercase">OUT</span>
+              <span id="metric-out-count" class="text-2xl font-bold text-neutral-300">0</span>
+              <span class="text-[10px] text-neutral-500 block uppercase">OUT</span>
             </div>
           </div>
         </div>
 
         <!-- Total Unique Footfall -->
-        <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
-          <p class="text-xs font-semibold uppercase tracking-wider text-purple-400/80">Total Footfall</p>
+        <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-4 shadow-lg">
+          <p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Total Footfall</p>
           <div class="mt-2 flex items-baseline gap-2">
-            <span id="metric-unique-heads-card" class="text-3xl font-bold text-purple-300 tracking-tight">0</span>
-            <span class="text-xs text-gray-500">visitors</span>
+            <span id="metric-unique-heads-card" class="text-3xl font-bold text-neutral-100 tracking-tight">0</span>
+            <span class="text-xs text-neutral-500">visitors</span>
           </div>
         </div>
 
       </div>
 
       <!-- Live CCTV Video Player Viewport -->
-      <div class="bg-black rounded-xl border border-gray-800 overflow-hidden shadow-2xl relative group">
+      <div class="bg-black rounded-xl border border-neutral-800 overflow-hidden shadow-2xl relative group">
         
-        <!-- Video Stream Image -->
-        <div class="relative w-full aspect-video bg-neutral-950 flex items-center justify-center overflow-hidden">
+        <!-- Video Stream Image & Interactive Zone Viewport -->
+        <div class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden" id="video-viewport">
           <img 
             id="video-stream" 
             src="/api/frame" 
             alt="Live CCTV Head Count Feed" 
-            class="w-full h-full object-contain select-none"
+            class="w-full h-full object-contain select-none pointer-events-none"
             onerror="onStreamError()"
           />
+
+          <!-- Interactive SVG Overlay for Movable & Resizable Tripwire & ROI Box -->
+          <svg
+            id="interactive-overlay"
+            class="absolute inset-0 w-full h-full select-none touch-none pointer-events-auto"
+            viewBox="0 0 1000 562.5"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <filter id="glow-tripwire" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="0" stdDeviation="3.5" flood-color="#ffffff" flood-opacity="0.9"/>
+              </filter>
+              <filter id="glow-handle" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ffffff" flood-opacity="0.95"/>
+              </filter>
+            </defs>
+
+            <!-- ROI Zone Group (Movable & Resizable) -->
+            <g id="roi-group" class="hidden">
+              <!-- Draggable Box Body -->
+              <rect id="roi-rect" x="150" y="84" width="700" height="394" 
+                    fill="rgba(255, 255, 255, 0.08)" 
+                    stroke="#ffffff" stroke-width="2" stroke-dasharray="6,4"
+                    class="cursor-move hover:fill-[rgba(255,255,255,0.16)] transition-colors"/>
+              
+              <!-- Corner brackets -->
+              <path id="roi-bracket-tl" d="" stroke="#ffffff" stroke-width="3" fill="none" class="pointer-events-none"/>
+              <path id="roi-bracket-tr" d="" stroke="#ffffff" stroke-width="3" fill="none" class="pointer-events-none"/>
+              <path id="roi-bracket-br" d="" stroke="#ffffff" stroke-width="3" fill="none" class="pointer-events-none"/>
+              <path id="roi-bracket-bl" d="" stroke="#ffffff" stroke-width="3" fill="none" class="pointer-events-none"/>
+
+              <!-- ROI Info Badge -->
+              <g id="roi-badge" class="cursor-move">
+                <rect x="0" y="-22" width="225" height="22" rx="4" fill="#050505" stroke="#737373" stroke-width="1"/>
+                <text x="10" y="-7" fill="#ffffff" font-size="11" font-family="monospace" font-weight="bold">
+                  ROI ZONE: <tspan id="roi-badge-count">0</tspan> HEADS
+                </text>
+              </g>
+
+              <!-- Edge Drag Resizers (Invisible thick hitboxes) -->
+              <line id="roi-edge-t" x1="0" y1="0" x2="0" y2="0" stroke="transparent" stroke-width="16" class="cursor-ns-resize"/>
+              <line id="roi-edge-b" x1="0" y1="0" x2="0" y2="0" stroke="transparent" stroke-width="16" class="cursor-ns-resize"/>
+              <line id="roi-edge-l" x1="0" y1="0" x2="0" y2="0" stroke="transparent" stroke-width="16" class="cursor-ew-resize"/>
+              <line id="roi-edge-r" x1="0" y1="0" x2="0" y2="0" stroke="transparent" stroke-width="16" class="cursor-ew-resize"/>
+
+              <!-- 4 Corner Resize Handles (Movable & Resizable) -->
+              <circle id="roi-handle-tl" cx="150" cy="84" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)" class="cursor-nwse-resize hover:r-10 transition-all"/>
+              <circle id="roi-handle-tr" cx="850" cy="84" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)" class="cursor-nesw-resize hover:r-10 transition-all"/>
+              <circle id="roi-handle-br" cx="850" cy="478" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)" class="cursor-nwse-resize hover:r-10 transition-all"/>
+              <circle id="roi-handle-bl" cx="150" cy="478" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)" class="cursor-nesw-resize hover:r-10 transition-all"/>
+            </g>
+
+            <!-- Tripwire Group (Movable & Resizable) -->
+            <g id="tripwire-group" class="hidden">
+              <!-- Draggable Tripwire Body (thick invisible stroke for easy grabbing anywhere on line) -->
+              <line id="tripwire-fat-line" x1="100" y1="281.25" x2="900" y2="281.25" stroke="transparent" stroke-width="32" class="cursor-move"/>
+
+              <!-- Visible Glowing Tripwire Line -->
+              <line id="tripwire-line" x1="100" y1="281.25" x2="900" y2="281.25" 
+                    stroke="#ffffff" stroke-width="2.5" stroke-dasharray="6,4"
+                    filter="url(#glow-tripwire)" class="pointer-events-none"/>
+
+              <!-- Tripwire Center Move Pill -->
+              <g id="tripwire-badge" class="cursor-move">
+                <rect x="-105" y="-12" width="210" height="22" rx="4" fill="#050505" stroke="#ffffff" stroke-width="1"/>
+                <text x="0" y="3" text-anchor="middle" fill="#ffffff" font-size="10" font-family="monospace" font-weight="bold">
+                  TRIPWIRE (DRAG TO MOVE)
+                </text>
+              </g>
+
+              <!-- Tripwire Endpoint P1 Handle (Drag to Resize / Change Angle) -->
+              <g id="tripwire-p1-group" class="cursor-crosshair">
+                <circle id="tripwire-p1-ring" cx="100" cy="281.25" r="15" fill="rgba(255,255,255,0.2)"/>
+                <circle id="tripwire-p1-dot" cx="100" cy="281.25" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)"/>
+                <text id="tripwire-p1-lbl" x="100" y="260" text-anchor="middle" fill="#ffffff" font-size="9" font-family="monospace" font-weight="bold">P1 (ENTRY)</text>
+              </g>
+
+              <!-- Tripwire Endpoint P2 Handle (Drag to Resize / Change Angle) -->
+              <g id="tripwire-p2-group" class="cursor-crosshair">
+                <circle id="tripwire-p2-ring" cx="900" cy="281.25" r="15" fill="rgba(255,255,255,0.2)"/>
+                <circle id="tripwire-p2-dot" cx="900" cy="281.25" r="8" fill="#ffffff" stroke="#000000" stroke-width="2.5" filter="url(#glow-handle)"/>
+                <text id="tripwire-p2-lbl" x="900" y="260" text-anchor="middle" fill="#ffffff" font-size="9" font-family="monospace" font-weight="bold">P2 (EXIT)</text>
+              </g>
+            </g>
+          </svg>
           
-          <!-- Stream Overlay HUD Stamp -->
+          <!-- Stream Overlay HUD Stamp (Monochrome) -->
           <div class="absolute top-3 left-4 flex items-center gap-2 pointer-events-none">
-            <div class="bg-black/60 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+            <div class="bg-black/80 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-white border border-neutral-700 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-white live-dot"></span>
               <span id="current-source-label">CAM 01 - CONCOURSE</span>
             </div>
-            <div class="bg-black/60 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-gray-300 border border-gray-700/40" id="live-clock">
+            <div class="bg-black/80 backdrop-blur px-2.5 py-1 rounded text-[11px] font-mono text-neutral-300 border border-neutral-800" id="live-clock">
               00:00:00 UTC
             </div>
           </div>
 
           <!-- Quick Action Floating Buttons -->
-          <div class="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 transition">
-            <button onclick="toggleStreamPause()" id="pause-btn" title="Pause/Resume Feed" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+          <div class="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 transition pointer-events-auto">
+            <button onclick="toggleStreamPause()" id="pause-btn" title="Pause/Resume Feed" class="p-2 rounded bg-black/80 hover:bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-700 backdrop-blur">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
-            <button onclick="takeSnapshot()" title="Capture Snapshot" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+            <button onclick="takeSnapshot()" title="Capture Snapshot" class="p-2 rounded bg-black/80 hover:bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-700 backdrop-blur">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             </button>
-            <button onclick="toggleFullscreen()" title="Fullscreen" class="p-2 rounded bg-black/70 hover:bg-black text-gray-300 hover:text-white border border-gray-700/60 backdrop-blur">
+            <button onclick="toggleFullscreen()" title="Fullscreen" class="p-2 rounded bg-black/80 hover:bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-700 backdrop-blur">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5m-7 11l-5 5m0 0h4m-4 0v-4m16 4v-4m0 4h-4m4 0l-5-5"/></svg>
             </button>
           </div>
         </div>
 
         <!-- Video Source Info Bar -->
-        <div class="p-3 bg-[#0f141f] border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+        <div class="p-3 bg-black border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-400">
           <div class="flex items-center gap-3">
-            <span class="flex items-center gap-1.5 text-gray-300">
-              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-              Model: <strong id="current-model-label" class="text-cyan-300 font-medium">YOLO11 Nano Head</strong>
+            <span class="flex items-center gap-1.5 text-neutral-300">
+              <span class="w-2 h-2 rounded-full bg-white"></span>
+              Detector: <strong id="current-model-label" class="text-white font-medium">YOLO11 Nano Head</strong>
             </span>
-            <span class="text-gray-600">|</span>
-            <span>Total Unique Visitors: <strong id="metric-unique-heads" class="text-gray-200">0</strong></span>
+            <span class="text-neutral-700">|</span>
+            <span>Total Logged Visitors: <strong id="metric-unique-heads" class="text-neutral-200">0</strong></span>
           </div>
           <div class="flex items-center gap-3">
-            <span class="text-emerald-400 font-mono">Stream Active</span>
+            <span class="text-white font-mono flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+              Stream Active
+            </span>
           </div>
         </div>
 
       </div>
 
       <!-- Real-time Temporal Chart: Head Count Over Time -->
-      <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 shadow-lg">
+      <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-4 shadow-lg">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
             </svg>
-            <h3 class="text-sm font-semibold text-gray-200">Live Headcount Timeline (Last 60 Seconds)</h3>
+            <h3 class="text-sm font-semibold text-neutral-200">Live Headcount Timeline (Last 60 Seconds)</h3>
           </div>
-          <span class="text-xs text-gray-500">Auto-refreshing 1Hz</span>
+          <span class="text-xs text-neutral-500 font-mono">1Hz Sample</span>
         </div>
         <div class="h-44 w-full">
           <canvas id="timelineChart"></canvas>
@@ -213,89 +306,103 @@
     <div class="lg:col-span-4 flex flex-col gap-5">
       
       <!-- Video Source Selection Card -->
-      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2 mb-4">
-          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-5 shadow-lg">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-neutral-200 flex items-center gap-2 mb-4">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
           </svg>
           CCTV Video Feed Source
         </h2>
 
-        <!-- Source Mode Tabs -->
-        <div class="grid grid-cols-4 gap-1 p-1 bg-gray-900 rounded-lg text-xs font-medium mb-4">
-          <button onclick="setTab('demo')" id="tab-demo" class="py-1.5 px-2 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold transition">Demo</button>
-          <button onclick="setTab('webcam')" id="tab-webcam" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">Webcam</button>
-          <button onclick="setTab('rtsp')" id="tab-rtsp" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">RTSP</button>
-          <button onclick="setTab('upload')" id="tab-upload" class="py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition">Upload</button>
+        <!-- Source Mode Tabs (Pale White & Black) -->
+        <div class="grid grid-cols-4 gap-1 p-1 bg-black border border-neutral-800 rounded-lg text-xs font-medium mb-4">
+          <button onclick="setTab('demo')" id="tab-demo" class="py-1.5 px-2 rounded-md bg-white text-black font-semibold transition">Channels</button>
+          <button onclick="setTab('webcam')" id="tab-webcam" class="py-1.5 px-2 rounded-md text-neutral-400 hover:text-white transition">Webcam</button>
+          <button onclick="setTab('rtsp')" id="tab-rtsp" class="py-1.5 px-2 rounded-md text-neutral-400 hover:text-white transition">RTSP</button>
+          <button onclick="setTab('upload')" id="tab-upload" class="py-1.5 px-2 rounded-md text-neutral-400 hover:text-white transition">Upload</button>
         </div>
 
         <!-- Tab 1: CCTV Surveillance Channels -->
         <div id="content-demo" class="space-y-2.5">
-          <p class="text-xs text-gray-400 font-medium">Select Surveillance Camera Channel:</p>
+          <p class="text-xs text-neutral-400 font-medium">Select Surveillance Camera Channel:</p>
           <div class="space-y-2">
-            <button onclick="applyDemoChannel('demo1')" id="btn-demo1" class="w-full py-2 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold text-left flex items-center justify-between transition">
+            <button onclick="applyDemoChannel('demo1')" id="btn-demo1" class="w-full py-2 px-3 rounded-lg bg-white text-black border border-white text-xs font-bold text-left flex items-center justify-between transition">
               <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
-                CAM 01: Concourse Crowd
+                <span class="w-2 h-2 rounded-full bg-black"></span>
+                CAM 01: Concourse Crowd (Demo)
               </span>
-              <span id="badge-demo1" class="text-[10px] text-emerald-400 uppercase font-mono tracking-wider">Active</span>
+              <span id="badge-demo1" class="text-[10px] text-black uppercase font-mono tracking-wider font-extrabold">Active</span>
             </button>
-            <button onclick="applyDemoChannel('demo2')" id="btn-demo2" class="w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition">
+            <button onclick="applyDemoChannel('demo2')" id="btn-demo2" class="w-full py-2 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 border border-neutral-800 text-xs font-medium text-left flex items-center justify-between transition">
               <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                CAM 02: Pedestrian Walkway
+                <span class="w-2 h-2 rounded-full bg-neutral-600"></span>
+                CAM 02: Howrah Concourse (Dense Crowd)
               </span>
-              <span id="badge-demo2" class="text-[10px] text-gray-500 uppercase font-mono tracking-wider">Standby</span>
+              <span id="badge-demo2" class="text-[10px] text-neutral-500 uppercase font-mono tracking-wider">Standby</span>
             </button>
-            <button onclick="applyDemoChannel('demo3')" id="btn-demo3" class="w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition">
+            <button onclick="applyDemoChannel('demo3')" id="btn-demo3" class="w-full py-2 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 border border-neutral-800 text-xs font-medium text-left flex items-center justify-between transition">
               <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                CAM 03: Entry Corridor
+                <span class="w-2 h-2 rounded-full bg-neutral-600"></span>
+                CAM 03: Kolkata Market (Dense Crowd)
               </span>
-              <span id="badge-demo3" class="text-[10px] text-gray-500 uppercase font-mono tracking-wider">Standby</span>
+              <span id="badge-demo3" class="text-[10px] text-neutral-500 uppercase font-mono tracking-wider">Standby</span>
+            </button>
+            <button onclick="applyDemoChannel('demo4')" id="btn-demo4" class="w-full py-2 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 border border-neutral-800 text-xs font-medium text-left flex items-center justify-between transition">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-neutral-600"></span>
+                CAM 04: Shibuya Scramble Crossing (Tokyo)
+              </span>
+              <span id="badge-demo4" class="text-[10px] text-neutral-500 uppercase font-mono tracking-wider">Standby</span>
+            </button>
+            <button onclick="applyDemoChannel('demo5')" id="btn-demo5" class="w-full py-2 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 border border-neutral-800 text-xs font-medium text-left flex items-center justify-between transition">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-neutral-600"></span>
+                CAM 05: Saint-Lazare Station (Paris Rush)
+              </span>
+              <span id="badge-demo5" class="text-[10px] text-neutral-500 uppercase font-mono tracking-wider">Standby</span>
             </button>
           </div>
         </div>
 
         <!-- Tab 2: Webcam -->
         <div id="content-webcam" class="space-y-3 hidden">
-          <p class="text-xs text-gray-400">Connect to your local camera / USB capture device.</p>
+          <p class="text-xs text-neutral-400">Connect to your local camera / USB capture device.</p>
           <div class="flex items-center gap-2">
-            <label class="text-xs text-gray-300 whitespace-nowrap">Camera Index:</label>
-            <input type="number" id="webcam-index" value="0" min="0" max="5" class="bg-gray-800 border border-gray-700 rounded px-2.5 py-1 text-xs text-white w-20 focus:outline-none focus:border-cyan-500">
+            <label class="text-xs text-neutral-300 whitespace-nowrap">Camera Index:</label>
+            <input type="number" id="webcam-index" value="0" min="0" max="5" class="bg-black border border-neutral-700 rounded px-2.5 py-1 text-xs text-white w-20 focus:outline-none focus:border-white">
           </div>
-          <button onclick="applySource('webcam')" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+          <button onclick="applySource('webcam')" class="w-full py-2 px-3 rounded-lg bg-white hover:bg-neutral-200 font-bold text-xs text-black transition flex items-center justify-center gap-2">
             Connect Live Camera
           </button>
         </div>
 
         <!-- Tab 3: RTSP / IP Camera -->
         <div id="content-rtsp" class="space-y-3 hidden">
-          <p class="text-xs text-gray-400">Stream directly from your NVR, DVR, or IP CCTV camera via RTSP / HTTP URL.</p>
+          <p class="text-xs text-neutral-400">Stream directly from your NVR, DVR, or IP CCTV camera via RTSP / HTTP URL.</p>
           <div>
-            <input type="text" id="rtsp-url" placeholder="rtsp://admin:pass@192.168.1.100:554/stream1" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-cyan-500">
+            <input type="text" id="rtsp-url" placeholder="rtsp://admin:pass@192.168.1.100:554/stream1" class="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder-neutral-600 focus:outline-none focus:border-white">
           </div>
-          <button onclick="applySource('rtsp')" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+          <button onclick="applySource('rtsp')" class="w-full py-2 px-3 rounded-lg bg-white hover:bg-neutral-200 font-bold text-xs text-black transition flex items-center justify-center gap-2">
             Connect RTSP Stream
           </button>
         </div>
 
         <!-- Tab 4: Upload Video File -->
         <div id="content-upload" class="space-y-3 hidden">
-          <p class="text-xs text-gray-400">Upload any CCTV surveillance video (.mp4, .avi, .mov, .mkv).</p>
-          <input type="file" id="video-file-input" accept="video/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-gray-800 file:text-gray-200 hover:file:bg-gray-700 cursor-pointer">
-          <button onclick="uploadVideo()" id="upload-btn" class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs text-white transition flex items-center justify-center gap-2">
+          <p class="text-xs text-neutral-400">Upload any CCTV surveillance video (.mp4, .avi, .mov, .mkv).</p>
+          <input type="file" id="video-file-input" accept="video/*" class="w-full text-xs text-neutral-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-neutral-900 file:text-white hover:file:bg-neutral-800 cursor-pointer">
+          <button onclick="uploadVideo()" id="upload-btn" class="w-full py-2 px-3 rounded-lg bg-white hover:bg-neutral-200 font-bold text-xs text-black transition flex items-center justify-center gap-2">
             Upload & Start Head Count
           </button>
-          <div id="upload-status" class="text-xs text-emerald-400 hidden"></div>
+          <div id="upload-status" class="text-xs text-neutral-300 hidden font-mono"></div>
         </div>
 
       </div>
 
-      <!-- Surveillance Model & Tuning Card -->
-      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <!-- Surveillance Model & Tuning Card (Monochrome) -->
+      <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-5 shadow-lg space-y-4">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-neutral-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
           </svg>
           Surveillance Detection Engine
@@ -303,10 +410,14 @@
 
         <!-- Model Select -->
         <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1.5">Detection Architecture</label>
-          <select id="model-select" onchange="changeModel()" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">
+          <label class="block text-xs font-medium text-neutral-400 mb-1.5">Detection Architecture</label>
+          <select id="model-select" onchange="changeModel()" class="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-xs text-neutral-100 focus:outline-none focus:border-white">
             <option value="yolo11n-head" selected>YOLO11 Nano Head (High-Speed CCTV Optimized)</option>
-            <option value="yolov8s-head">YOLOv8 Small Head (High Accuracy Dense Crowds)</option>
+            <option value="yolo11s-head">YOLO11 Small Head (Balanced Speed & Recall)</option>
+            <option value="yolo11m-head">YOLO11 Medium Head (High Recall Dense Crowd)</option>
+            <option value="yolov8n-head">YOLOv8 Nano Head (Ultra-Low Latency ~90 FPS)</option>
+            <option value="yolov8s-head">YOLOv8 Small Head (Zero False-Positive Precision)</option>
+            <option value="yolov8m-head">YOLOv8 Medium Head (High Capacity Crowd Model)</option>
             <option value="yolo11n-person">YOLO11 Nano Person (Full-Body Tracking)</option>
           </select>
         </div>
@@ -314,8 +425,8 @@
         <!-- Confidence Slider -->
         <div>
           <div class="flex items-center justify-between text-xs mb-1.5">
-            <span class="text-gray-400">Detection Sensitivity</span>
-            <span id="conf-val" class="text-emerald-400 font-mono font-semibold">25%</span>
+            <span class="text-neutral-400">Detection Sensitivity</span>
+            <span id="conf-val" class="text-white font-mono font-semibold">25%</span>
           </div>
           <input 
             type="range" 
@@ -325,9 +436,9 @@
             step="0.05" 
             value="0.25" 
             oninput="updateConf(this.value)"
-            class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+            class="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-white"
           >
-          <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+          <div class="flex justify-between text-[10px] text-neutral-500 mt-1">
             <span>High Sensitivity (10%)</span>
             <span>Strict Filtering (80%)</span>
           </div>
@@ -335,21 +446,34 @@
       </div>
 
       <!-- Advanced CCTV Tripwire & ROI Setup -->
-      <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 shadow-lg space-y-3.5">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="bg-[#0c0c0c] border border-neutral-800 rounded-xl p-5 shadow-lg space-y-3.5">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-neutral-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
           </svg>
           Tripwire & Monitoring Zones
         </h2>
-        <p class="text-xs text-gray-400">Configure virtual counting tripwires or monitored bounding zones for perimeter headcounts.</p>
+        <p class="text-xs text-neutral-400">Configure virtual counting tripwires or monitored bounding zones for perimeter headcounts.</p>
+
+        <!-- Direct On-Video Interactivity Notice -->
+        <div class="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-[11px] text-neutral-300 flex items-start gap-2">
+          <span class="text-white">✨</span>
+          <span><strong>Interactive on Video:</strong> When enabled, directly drag lines/boxes to move them, or drag corner/endpoint handles to resize.</span>
+        </div>
 
         <div class="flex items-center gap-2">
-          <button onclick="toggleTripwire()" id="tripwire-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition">
+          <button onclick="toggleTripwire()" id="tripwire-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 text-xs font-medium border border-neutral-800 transition">
             Enable Tripwire Line
           </button>
-          <button onclick="toggleROI()" id="roi-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium border border-gray-700 transition">
+          <button onclick="toggleROI()" id="roi-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 text-xs font-medium border border-neutral-800 transition">
             Enable ROI Zone
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between pt-1 text-[11px]">
+          <span id="zone-coords-info" class="text-neutral-500 font-mono">Zones: Inactive</span>
+          <button onclick="resetTripwireAndROI()" class="text-neutral-400 hover:text-white underline transition">
+            Reset to Center
           </button>
         </div>
       </div>
@@ -359,8 +483,8 @@
   </main>
 
   <!-- Footer -->
-  <footer class="mt-auto border-t border-gray-800/80 bg-[#0d121c] py-3 px-6 text-center text-xs text-gray-500">
-    CCTV Live Surveillance Analytics &bull; Real-Time Head Detection &amp; Multi-Object Tracking Engine
+  <footer class="mt-auto border-t border-neutral-900 bg-black py-3 px-6 text-center text-xs text-neutral-600">
+    Calance CCTV Surveillance System &bull; Live Head Counting &amp; Occupancy Engine
   </footer>
 
   <!-- Client-side Logic -->
@@ -369,20 +493,21 @@
     let tripwireEnabled = false;
     let roiEnabled = false;
 
-    // Initialize Chart.js
+    // Initialize Chart.js with Monochrome Pale White & Black styling
     const ctx = document.getElementById('timelineChart').getContext('2d');
     const chartData = {
       labels: [],
       datasets: [{
         label: 'Live Head Count',
         data: [],
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: '#ffffff',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         borderWidth: 2,
         tension: 0.35,
         fill: true,
         pointRadius: 2,
-        pointHoverRadius: 5
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#ffffff'
       }]
     };
     const timelineChart = new Chart(ctx, {
@@ -400,8 +525,8 @@
           y: {
             beginAtZero: true,
             suggestedMax: 15,
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#9ca3af', font: { size: 10 } }
+            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+            ticks: { color: '#737373', font: { size: 10 } }
           }
         },
         plugins: {
@@ -424,6 +549,10 @@
           }
           document.getElementById('metric-in-count').innerText = data.in_count;
           document.getElementById('metric-out-count').innerText = data.out_count;
+          if (data.roi_head_count !== undefined) {
+            const rBadge = document.getElementById('roi-badge-count');
+            if (rBadge) rBadge.innerText = data.roi_head_count;
+          }
         }
       } catch (err) {
         // network retry
@@ -455,38 +584,41 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Source Tab Switching
+    // Source Tab Switching (Monochrome White & Black)
     function setTab(tab) {
       ['demo', 'webcam', 'rtsp', 'upload'].forEach(t => {
         const tabBtn = document.getElementById(`tab-${t}`);
         const content = document.getElementById(`content-${t}`);
         if (t === tab) {
-          tabBtn.className = 'py-1.5 px-2 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold transition';
+          tabBtn.className = 'py-1.5 px-2 rounded-md bg-white text-black font-semibold transition';
           content.classList.remove('hidden');
         } else {
-          tabBtn.className = 'py-1.5 px-2 rounded-md text-gray-400 hover:text-gray-200 transition';
+          tabBtn.className = 'py-1.5 px-2 rounded-md text-neutral-400 hover:text-white transition';
           content.classList.add('hidden');
         }
       });
     }
 
-    // Switch CCTV Demo Channels
+    // Switch CCTV Demo Channels (Monochrome White & Black)
     async function applyDemoChannel(demoId) {
       const labels = {
-        'demo1': 'CAM 01 - CONCOURSE',
-        'demo2': 'CAM 02 - WALKWAY',
-        'demo3': 'CAM 03 - CORRIDOR'
+        'demo1': 'CAM 01 - CONCOURSE CROWD',
+        'demo2': 'CAM 02 - HOWRAH DENSE CROWD',
+        'demo3': 'CAM 03 - KOLKATA MARKET DENSE',
+        'demo4': 'CAM 04 - SHIBUYA DENSE CROSSING',
+        'demo5': 'CAM 05 - SAINT-LAZARE RUSH HOUR'
       };
-      ['demo1', 'demo2', 'demo3'].forEach(id => {
+      ['demo1', 'demo2', 'demo3', 'demo4', 'demo5'].forEach(id => {
         const btn = document.getElementById(`btn-${id}`);
         const badge = document.getElementById(`badge-${id}`);
+        if (!btn || !badge) return;
         if (id === demoId) {
-          btn.className = 'w-full py-2 px-3 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold text-left flex items-center justify-between transition';
-          badge.className = 'text-[10px] text-emerald-400 uppercase font-mono tracking-wider';
+          btn.className = 'w-full py-2 px-3 rounded-lg bg-white text-black border border-white text-xs font-bold text-left flex items-center justify-between transition';
+          badge.className = 'text-[10px] text-black uppercase font-mono tracking-wider font-extrabold';
           badge.innerText = 'Active';
         } else {
-          btn.className = 'w-full py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700/80 text-gray-300 border border-gray-700 text-xs font-medium text-left flex items-center justify-between transition';
-          badge.className = 'text-[10px] text-gray-500 uppercase font-mono tracking-wider';
+          btn.className = 'w-full py-2 px-3 rounded-lg bg-black hover:bg-neutral-900 text-neutral-300 border border-neutral-800 text-xs font-medium text-left flex items-center justify-between transition';
+          badge.className = 'text-[10px] text-neutral-500 uppercase font-mono tracking-wider';
           badge.innerText = 'Standby';
         }
       });
@@ -599,30 +731,19 @@
       });
     }
 
-    // Overlays Toggle
-    async function toggleOverlay(type, checked) {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ overlay_type: type, enabled: checked })
-      });
-    }
-
-    // Tripwire Toggle
+    // Tripwire Toggle (Monochrome White & Black with Live Drag & Resize)
     async function toggleTripwire() {
-      tripwireEnabled = !tripwireEnabled;
+      tripwireState.enabled = !tripwireState.enabled;
       const btn = document.getElementById('tripwire-btn');
-      if (tripwireEnabled) {
-        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-cyan-600 text-white text-xs font-semibold shadow transition';
+      if (tripwireState.enabled) {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-white text-black text-xs font-bold border border-white transition';
         btn.innerText = 'Tripwire Active';
-        await fetch('/api/tripwire', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: true })
-        });
+        renderOverlayVisuals();
+        await syncTripwireNow();
       } else {
-        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-gray-800 text-gray-300 text-xs font-medium border border-gray-700 transition';
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-black text-neutral-300 text-xs font-medium border border-neutral-800 transition';
         btn.innerText = 'Enable Tripwire Line';
+        renderOverlayVisuals();
         await fetch('/api/tripwire', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -631,21 +752,19 @@
       }
     }
 
-    // ROI Zone Toggle
+    // ROI Zone Toggle (Monochrome White & Black with Live Drag & Resize)
     async function toggleROI() {
-      roiEnabled = !roiEnabled;
+      roiState.enabled = !roiState.enabled;
       const btn = document.getElementById('roi-btn');
-      if (roiEnabled) {
-        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold shadow transition';
+      if (roiState.enabled) {
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-white text-black text-xs font-bold border border-white transition';
         btn.innerText = 'ROI Zone Active';
-        await fetch('/api/roi', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: true })
-        });
+        renderOverlayVisuals();
+        await syncROINow();
       } else {
-        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-gray-800 text-gray-300 text-xs font-medium border border-gray-700 transition';
+        btn.className = 'flex-1 py-1.5 px-3 rounded-lg bg-black text-neutral-300 text-xs font-medium border border-neutral-800 transition';
         btn.innerText = 'Enable ROI Zone';
+        renderOverlayVisuals();
         await fetch('/api/roi', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -653,6 +772,414 @@
         });
       }
     }
+
+    // Reset positions to default center
+    async function resetTripwireAndROI() {
+      tripwireState.pt1 = [0.10, 0.50];
+      tripwireState.pt2 = [0.90, 0.50];
+      roiState.x = 0.15;
+      roiState.y = 0.15;
+      roiState.w = 0.70;
+      roiState.h = 0.70;
+      renderOverlayVisuals();
+      if (tripwireState.enabled) await syncTripwireNow();
+      if (roiState.enabled) await syncROINow();
+    }
+
+    // =========================================================================
+    // MOVABLE & RESIZABLE TRIPWIRE & ROI BOX CONTROLLER
+    // =========================================================================
+    const SVG_W = 1000.0;
+    const SVG_H = 562.5;
+
+    let tripwireState = {
+      enabled: false,
+      pt1: [0.10, 0.50],
+      pt2: [0.90, 0.50]
+    };
+
+    let roiState = {
+      enabled: false,
+      x: 0.15,
+      y: 0.15,
+      w: 0.70,
+      h: 0.70
+    };
+
+    let activeDrag = null;
+    let syncTripwireTimer = null;
+    let syncRoiTimer = null;
+
+    function getNormalizedCoords(e) {
+      const svg = document.getElementById('interactive-overlay');
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return { nx: 0.5, ny: 0.5, sx: 500, sy: 281.25 };
+      const svgPt = pt.matrixTransform(ctm.inverse());
+      const sx = Math.max(0, Math.min(SVG_W, svgPt.x));
+      const sy = Math.max(0, Math.min(SVG_H, svgPt.y));
+      return {
+        sx,
+        sy,
+        nx: Math.max(0.0, Math.min(1.0, sx / SVG_W)),
+        ny: Math.max(0.0, Math.min(1.0, sy / SVG_H))
+      };
+    }
+
+    function renderOverlayVisuals() {
+      // 1. Tripwire rendering
+      const twGroup = document.getElementById('tripwire-group');
+      if (tripwireState.enabled) {
+        twGroup.classList.remove('hidden');
+        const x1 = tripwireState.pt1[0] * SVG_W;
+        const y1 = tripwireState.pt1[1] * SVG_H;
+        const x2 = tripwireState.pt2[0] * SVG_W;
+        const y2 = tripwireState.pt2[1] * SVG_H;
+
+        const line = document.getElementById('tripwire-line');
+        const fatLine = document.getElementById('tripwire-fat-line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        fatLine.setAttribute('x1', x1); fatLine.setAttribute('y1', y1);
+        fatLine.setAttribute('x2', x2); fatLine.setAttribute('y2', y2);
+
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        document.getElementById('tripwire-badge').setAttribute('transform', `translate(${midX}, ${midY})`);
+
+        document.getElementById('tripwire-p1-ring').setAttribute('cx', x1);
+        document.getElementById('tripwire-p1-ring').setAttribute('cy', y1);
+        document.getElementById('tripwire-p1-dot').setAttribute('cx', x1);
+        document.getElementById('tripwire-p1-dot').setAttribute('cy', y1);
+        const p1Lbl = document.getElementById('tripwire-p1-lbl');
+        p1Lbl.setAttribute('x', x1);
+        p1Lbl.setAttribute('y', Math.max(20, y1 - 18));
+
+        document.getElementById('tripwire-p2-ring').setAttribute('cx', x2);
+        document.getElementById('tripwire-p2-ring').setAttribute('cy', y2);
+        document.getElementById('tripwire-p2-dot').setAttribute('cx', x2);
+        document.getElementById('tripwire-p2-dot').setAttribute('cy', y2);
+        const p2Lbl = document.getElementById('tripwire-p2-lbl');
+        p2Lbl.setAttribute('x', x2);
+        p2Lbl.setAttribute('y', Math.max(20, y2 - 18));
+      } else {
+        twGroup.classList.add('hidden');
+      }
+
+      // 2. ROI Zone rendering
+      const roiGroup = document.getElementById('roi-group');
+      if (roiState.enabled) {
+        roiGroup.classList.remove('hidden');
+        const rx = roiState.x * SVG_W;
+        const ry = roiState.y * SVG_H;
+        const rw = roiState.w * SVG_W;
+        const rh = roiState.h * SVG_H;
+
+        const rect = document.getElementById('roi-rect');
+        rect.setAttribute('x', rx);
+        rect.setAttribute('y', ry);
+        rect.setAttribute('width', rw);
+        rect.setAttribute('height', rh);
+
+        document.getElementById('roi-handle-tl').setAttribute('cx', rx);
+        document.getElementById('roi-handle-tl').setAttribute('cy', ry);
+
+        document.getElementById('roi-handle-tr').setAttribute('cx', rx + rw);
+        document.getElementById('roi-handle-tr').setAttribute('cy', ry);
+
+        document.getElementById('roi-handle-br').setAttribute('cx', rx + rw);
+        document.getElementById('roi-handle-br').setAttribute('cy', ry + rh);
+
+        document.getElementById('roi-handle-bl').setAttribute('cx', rx);
+        document.getElementById('roi-handle-bl').setAttribute('cy', ry + rh);
+
+        const c = Math.min(24, rw * 0.25, rh * 0.25);
+        document.getElementById('roi-bracket-tl').setAttribute('d', `M ${rx} ${ry + c} L ${rx} ${ry} L ${rx + c} ${ry}`);
+        document.getElementById('roi-bracket-tr').setAttribute('d', `M ${rx + rw - c} ${ry} L ${rx + rw} ${ry} L ${rx + rw} ${ry + c}`);
+        document.getElementById('roi-bracket-br').setAttribute('d', `M ${rx + rw} ${ry + rh - c} L ${rx + rw} ${ry + rh} L ${rx + rw - c} ${ry + rh}`);
+        document.getElementById('roi-bracket-bl').setAttribute('d', `M ${rx + c} ${ry + rh} L ${rx} ${ry + rh} L ${rx} ${ry + rh - c}`);
+
+        const et = document.getElementById('roi-edge-t');
+        et.setAttribute('x1', rx + c); et.setAttribute('y1', ry);
+        et.setAttribute('x2', rx + rw - c); et.setAttribute('y2', ry);
+
+        const eb = document.getElementById('roi-edge-b');
+        eb.setAttribute('x1', rx + c); eb.setAttribute('y1', ry + rh);
+        eb.setAttribute('x2', rx + rw - c); eb.setAttribute('y2', ry + rh);
+
+        const el = document.getElementById('roi-edge-l');
+        el.setAttribute('x1', rx); el.setAttribute('y1', ry + c);
+        el.setAttribute('x2', rx); el.setAttribute('y2', ry + rh - c);
+
+        const er = document.getElementById('roi-edge-r');
+        er.setAttribute('x1', rx + rw); er.setAttribute('y1', ry + c);
+        er.setAttribute('x2', rx + rw); er.setAttribute('y2', ry + rh - c);
+
+        document.getElementById('roi-badge').setAttribute('transform', `translate(${rx}, ${Math.max(26, ry)})`);
+      } else {
+        roiGroup.classList.add('hidden');
+      }
+
+      updateCoordinatePills();
+    }
+
+    function updateCoordinatePills() {
+      const infoEl = document.getElementById('zone-coords-info');
+      if (!infoEl) return;
+      let parts = [];
+      if (tripwireState.enabled) {
+        const x1 = Math.round(tripwireState.pt1[0] * 100);
+        const y1 = Math.round(tripwireState.pt1[1] * 100);
+        const x2 = Math.round(tripwireState.pt2[0] * 100);
+        const y2 = Math.round(tripwireState.pt2[1] * 100);
+        parts.push(`Line: (${x1}%,${y1}%)→(${x2}%,${y2}%)`);
+      }
+      if (roiState.enabled) {
+        const w = Math.round(roiState.w * 100);
+        const h = Math.round(roiState.h * 100);
+        parts.push(`ROI: ${w}%×${h}%`);
+      }
+      infoEl.innerText = parts.length > 0 ? parts.join(' | ') : 'Zones: Inactive';
+    }
+
+    function queueSyncTripwire() {
+      clearTimeout(syncTripwireTimer);
+      syncTripwireTimer = setTimeout(syncTripwireNow, 80);
+    }
+
+    async function syncTripwireNow() {
+      if (!tripwireState.enabled) return;
+      try {
+        await fetch('/api/tripwire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enabled: true,
+            pt1: [tripwireState.pt1[0], tripwireState.pt1[1]],
+            pt2: [tripwireState.pt2[0], tripwireState.pt2[1]]
+          })
+        });
+      } catch (e) {}
+    }
+
+    function queueSyncROI() {
+      clearTimeout(syncRoiTimer);
+      syncRoiTimer = setTimeout(syncROINow, 80);
+    }
+
+    async function syncROINow() {
+      if (!roiState.enabled) return;
+      const { x, y, w, h } = roiState;
+      const points = [
+        [x, y],
+        [x + w, y],
+        [x + w, y + h],
+        [x, y + h]
+      ];
+      try {
+        await fetch('/api/roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enabled: true,
+            points: points
+          })
+        });
+      } catch (e) {}
+    }
+
+    function setupDragListeners() {
+      const svg = document.getElementById('interactive-overlay');
+
+      function startDrag(type, e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const coords = getNormalizedCoords(e);
+        activeDrag = {
+          type: type,
+          pointerId: e.pointerId,
+          start: coords,
+          origTripwire: {
+            pt1: [...tripwireState.pt1],
+            pt2: [...tripwireState.pt2]
+          },
+          origROI: {
+            x: roiState.x,
+            y: roiState.y,
+            w: roiState.w,
+            h: roiState.h
+          }
+        };
+        try { svg.setPointerCapture(e.pointerId); } catch(err) {}
+      }
+
+      document.getElementById('tripwire-fat-line').addEventListener('pointerdown', e => startDrag('tw-body', e));
+      document.getElementById('tripwire-badge').addEventListener('pointerdown', e => startDrag('tw-body', e));
+      document.getElementById('tripwire-p1-group').addEventListener('pointerdown', e => startDrag('tw-p1', e));
+      document.getElementById('tripwire-p2-group').addEventListener('pointerdown', e => startDrag('tw-p2', e));
+
+      document.getElementById('roi-rect').addEventListener('pointerdown', e => startDrag('roi-body', e));
+      document.getElementById('roi-badge').addEventListener('pointerdown', e => startDrag('roi-body', e));
+      document.getElementById('roi-handle-tl').addEventListener('pointerdown', e => startDrag('roi-tl', e));
+      document.getElementById('roi-handle-tr').addEventListener('pointerdown', e => startDrag('roi-tr', e));
+      document.getElementById('roi-handle-br').addEventListener('pointerdown', e => startDrag('roi-br', e));
+      document.getElementById('roi-handle-bl').addEventListener('pointerdown', e => startDrag('roi-bl', e));
+      document.getElementById('roi-edge-t').addEventListener('pointerdown', e => startDrag('roi-t', e));
+      document.getElementById('roi-edge-b').addEventListener('pointerdown', e => startDrag('roi-b', e));
+      document.getElementById('roi-edge-l').addEventListener('pointerdown', e => startDrag('roi-l', e));
+      document.getElementById('roi-edge-r').addEventListener('pointerdown', e => startDrag('roi-r', e));
+
+      svg.addEventListener('pointermove', e => {
+        if (!activeDrag || activeDrag.pointerId !== e.pointerId) return;
+        e.preventDefault();
+        const curr = getNormalizedCoords(e);
+        const dx = curr.nx - activeDrag.start.nx;
+        const dy = curr.ny - activeDrag.start.ny;
+        const MIN_DIM = 0.05;
+
+        switch (activeDrag.type) {
+          case 'tw-body': {
+            const p1 = activeDrag.origTripwire.pt1;
+            const p2 = activeDrag.origTripwire.pt2;
+            let nx1 = p1[0] + dx, ny1 = p1[1] + dy;
+            let nx2 = p2[0] + dx, ny2 = p2[1] + dy;
+
+            const minX = Math.min(nx1, nx2), maxX = Math.max(nx1, nx2);
+            const minY = Math.min(ny1, ny2), maxY = Math.max(ny1, ny2);
+            let shiftX = 0, shiftY = 0;
+            if (minX < 0) shiftX = -minX;
+            else if (maxX > 1) shiftX = 1 - maxX;
+            if (minY < 0) shiftY = -minY;
+            else if (maxY > 1) shiftY = 1 - maxY;
+
+            tripwireState.pt1 = [nx1 + shiftX, ny1 + shiftY];
+            tripwireState.pt2 = [nx2 + shiftX, ny2 + shiftY];
+            renderOverlayVisuals();
+            queueSyncTripwire();
+            break;
+          }
+          case 'tw-p1': {
+            tripwireState.pt1 = [curr.nx, curr.ny];
+            renderOverlayVisuals();
+            queueSyncTripwire();
+            break;
+          }
+          case 'tw-p2': {
+            tripwireState.pt2 = [curr.nx, curr.ny];
+            renderOverlayVisuals();
+            queueSyncTripwire();
+            break;
+          }
+          case 'roi-body': {
+            const orig = activeDrag.origROI;
+            const maxX = 1.0 - orig.w;
+            const maxY = 1.0 - orig.h;
+            roiState.x = Math.max(0, Math.min(maxX, orig.x + dx));
+            roiState.y = Math.max(0, Math.min(maxY, orig.y + dy));
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-tl': {
+            const orig = activeDrag.origROI;
+            const right = orig.x + orig.w;
+            const bottom = orig.y + orig.h;
+            const newX = Math.max(0, Math.min(right - MIN_DIM, orig.x + dx));
+            const newY = Math.max(0, Math.min(bottom - MIN_DIM, orig.y + dy));
+            roiState.x = newX;
+            roiState.y = newY;
+            roiState.w = right - newX;
+            roiState.h = bottom - newY;
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-tr': {
+            const orig = activeDrag.origROI;
+            const bottom = orig.y + orig.h;
+            const newY = Math.max(0, Math.min(bottom - MIN_DIM, orig.y + dy));
+            const newW = Math.max(MIN_DIM, Math.min(1.0 - orig.x, orig.w + dx));
+            roiState.y = newY;
+            roiState.w = newW;
+            roiState.h = bottom - newY;
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-br': {
+            const orig = activeDrag.origROI;
+            roiState.w = Math.max(MIN_DIM, Math.min(1.0 - orig.x, orig.w + dx));
+            roiState.h = Math.max(MIN_DIM, Math.min(1.0 - orig.y, orig.h + dy));
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-bl': {
+            const orig = activeDrag.origROI;
+            const right = orig.x + orig.w;
+            const newX = Math.max(0, Math.min(right - MIN_DIM, orig.x + dx));
+            roiState.x = newX;
+            roiState.w = right - newX;
+            roiState.h = Math.max(MIN_DIM, Math.min(1.0 - orig.y, orig.h + dy));
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-t': {
+            const orig = activeDrag.origROI;
+            const bottom = orig.y + orig.h;
+            const newY = Math.max(0, Math.min(bottom - MIN_DIM, orig.y + dy));
+            roiState.y = newY;
+            roiState.h = bottom - newY;
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-b': {
+            const orig = activeDrag.origROI;
+            roiState.h = Math.max(MIN_DIM, Math.min(1.0 - orig.y, orig.h + dy));
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-l': {
+            const orig = activeDrag.origROI;
+            const right = orig.x + orig.w;
+            const newX = Math.max(0, Math.min(right - MIN_DIM, orig.x + dx));
+            roiState.x = newX;
+            roiState.w = right - newX;
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+          case 'roi-r': {
+            const orig = activeDrag.origROI;
+            roiState.w = Math.max(MIN_DIM, Math.min(1.0 - orig.x, orig.w + dx));
+            renderOverlayVisuals();
+            queueSyncROI();
+            break;
+          }
+        }
+      });
+
+      function endDrag(e) {
+        if (!activeDrag) return;
+        const type = activeDrag.type;
+        try { svg.releasePointerCapture(activeDrag.pointerId); } catch(err) {}
+        activeDrag = null;
+        if (type.startsWith('tw')) syncTripwireNow();
+        if (type.startsWith('roi')) syncROINow();
+      }
+
+      svg.addEventListener('pointerup', endDrag);
+      svg.addEventListener('pointercancel', endDrag);
+    }
+
+    // Initialize drag listeners on page load
+    setupDragListeners();
+    renderOverlayVisuals();
 
     // Controls
     async function toggleStreamPause() {
@@ -663,7 +1190,7 @@
         body: JSON.stringify({ is_paused: isPaused })
       });
       document.getElementById('pause-btn').innerHTML = isPaused ?
-        '<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' :
+        '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' :
         '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
     }
 
@@ -702,4 +1229,3 @@
   </script>
 </body>
 </html>
-

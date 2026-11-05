@@ -121,6 +121,15 @@ def get_status() -> Dict[str, Any]:
     metrics["conf_threshold"] = pipeline.conf_threshold
     metrics["is_paused"] = pipeline.is_paused
     metrics["total_unique_heads"] = len(pipeline.counter.seen_track_ids)
+    metrics["tripwire"] = {
+        "enabled": pipeline.raw_counting_line is not None,
+        "pt1": pipeline.raw_counting_line[0] if pipeline.raw_counting_line else None,
+        "pt2": pipeline.raw_counting_line[1] if pipeline.raw_counting_line else None,
+    }
+    metrics["roi"] = {
+        "enabled": pipeline.raw_roi_polygon is not None,
+        "points": pipeline.raw_roi_polygon if pipeline.raw_roi_polygon else None,
+    }
     return metrics
 
 
@@ -203,23 +212,32 @@ def update_settings(req: SettingsRequest):
 def configure_tripwire(req: TripwireRequest):
     """Configures virtual tripwire coordinates for bidirectional IN/OUT line crossing."""
     if req.enabled:
-        pt1 = tuple(req.pt1) if req.pt1 else DEFAULT_TRIPWIRE_LINE[0]
-        pt2 = tuple(req.pt2) if req.pt2 else DEFAULT_TRIPWIRE_LINE[1]
+        pt1 = tuple(req.pt1) if req.pt1 is not None else DEFAULT_TRIPWIRE_LINE[0]
+        pt2 = tuple(req.pt2) if req.pt2 is not None else DEFAULT_TRIPWIRE_LINE[1]
         pipeline.set_counting_line(pt1, pt2)
     else:
-        pipeline.counter.counting_line = None
-    return {"success": True, "tripwire_enabled": req.enabled}
+        pipeline.set_counting_line(None, None)
+    return {
+        "success": True,
+        "tripwire_enabled": req.enabled,
+        "pt1": pipeline.raw_counting_line[0] if pipeline.raw_counting_line else None,
+        "pt2": pipeline.raw_counting_line[1] if pipeline.raw_counting_line else None,
+    }
 
 
 @app.post("/api/roi")
 def configure_roi(req: ROIRequest):
     """Configures monitored region of interest polygon points."""
     if req.enabled:
-        points = [tuple(p) for p in req.points] if req.points else DEFAULT_ROI_POLYGON
+        points = [tuple(p) for p in req.points] if req.points is not None else DEFAULT_ROI_POLYGON
         pipeline.set_roi_polygon(points)
     else:
-        pipeline.counter.roi_polygon = None
-    return {"success": True, "roi_enabled": req.enabled}
+        pipeline.set_roi_polygon(None)
+    return {
+        "success": True,
+        "roi_enabled": req.enabled,
+        "points": pipeline.raw_roi_polygon if pipeline.raw_roi_polygon else None,
+    }
 
 
 @app.post("/api/reset_counts")
@@ -245,6 +263,57 @@ def export_csv():
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=cctv_headcount_{int(time.time())}.csv"}
     )
+
+
+class AnalyzeRequest(BaseModel):
+    zone_name: Optional[str] = None
+    area_m2: Optional[float] = None
+    topology: Optional[str] = None
+    operator_notes: Optional[str] = None
+    extra_telemetry: Optional[Dict[str, Any]] = None  # e.g. {"rf_probes": {...}, "environment": {...}}
+
+
+_last_analysis: Optional[Dict[str, Any]] = None
+
+
+@app.post("/api/analyze")
+def run_crowd_analysis(req: AnalyzeRequest):
+    """Fuses live counts with GTFS-RT and returns a 20-minute stampede-risk forecast from Claude."""
+    global _last_analysis
+    import anthropic
+    from engine import crowd_analyst
+
+    try:
+        result = crowd_analyst.analyze(
+            pipeline,
+            zone_name=req.zone_name or crowd_analyst.ZONE_NAME,
+            area_m2=req.area_m2 or crowd_analyst.ZONE_AREA_M2,
+            topology=req.topology or crowd_analyst.ZONE_TOPOLOGY,
+            operator_notes=req.operator_notes,
+            extra_telemetry=req.extra_telemetry,
+        )
+    except (anthropic.AuthenticationError, TypeError):
+        # TypeError: the SDK could not resolve any credential (no key, token or profile)
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is missing or invalid")
+    except anthropic.RateLimitError:
+        raise HTTPException(status_code=429, detail="Claude API rate limit hit; retry shortly")
+    except anthropic.APIStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Claude API error {e.status_code}: {e.message}")
+    except anthropic.APIConnectionError:
+        raise HTTPException(status_code=502, detail="Could not reach the Claude API")
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    _last_analysis = result
+    return result
+
+
+@app.get("/api/analyze/last")
+def get_last_analysis():
+    """Returns the most recent crowd analysis without calling the model again."""
+    if _last_analysis is None:
+        raise HTTPException(status_code=404, detail="No analysis has been run yet")
+    return _last_analysis
 
 
 if __name__ == "__main__":
