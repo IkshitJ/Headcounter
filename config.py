@@ -27,8 +27,8 @@ SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
 # =============================================================================
 # 1. SERVER & NETWORK SETTINGS
 # =============================================================================
-SERVER_HOST = "0.0.0.0"      # "0.0.0.0" listens on all network interfaces; "127.0.0.1" for localhost only
-SERVER_PORT = 8000           # Change this port if port 8000 is occupied on your system
+SERVER_HOST = "0.0.0.0"      # "0.0.0.0" listens on all network interfaces
+SERVER_PORT = int(os.environ.get("PORT", 7860))  # Hugging Face Spaces port 7860 by default
 
 # =============================================================================
 # 2. DEFAULT VIDEO INPUT SOURCE

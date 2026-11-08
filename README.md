@@ -1,3 +1,13 @@
+---
+title: CCTV Headcounter
+emoji: 🎥
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 📹 CCTV Live Head Counter made by Ikshit for Calance
 
 
