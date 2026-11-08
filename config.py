@@ -28,7 +28,7 @@ SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
 # 1. SERVER & NETWORK SETTINGS
 # =============================================================================
 SERVER_HOST = "0.0.0.0"      # "0.0.0.0" listens on all network interfaces
-SERVER_PORT = int(os.environ.get("PORT", 7860))  # Hugging Face Spaces port 7860 by default
+SERVER_PORT = int(os.environ.get("PORT", 8000))  # Port 8000 by default (or env PORT in cloud/Docker)
 
 # =============================================================================
 # 2. DEFAULT VIDEO INPUT SOURCE
@@ -46,6 +46,34 @@ DEMO_SOURCES = {
     "demo3": str(SAMPLE_DIR / "cctv_india_market_kolkata.mp4"),
     "demo4": str(SAMPLE_DIR / "cctv_shibuya_dense_crossing.mp4"),
     "demo5": str(SAMPLE_DIR / "cctv_paris_station_rush.mp4"),
+}
+
+# 4-Camera CCTV Quad-Grid Configuration
+QUAD_CAMERAS = {
+    "cam1": {
+        "id": "cam1",
+        "name": "CAM-01: HOWRAH STATION",
+        "location": "Main Concourse Area",
+        "source": str(SAMPLE_DIR / "cctv_howrah_dense_crowd.mp4") if (SAMPLE_DIR / "cctv_howrah_dense_crowd.mp4").exists() else str(SAMPLE_DIR / "cctv_crowd_demo.mp4")
+    },
+    "cam2": {
+        "id": "cam2",
+        "name": "CAM-02: KOLKATA BAZAAR",
+        "location": "Central Market Alley",
+        "source": str(SAMPLE_DIR / "cctv_india_market_kolkata.mp4") if (SAMPLE_DIR / "cctv_india_market_kolkata.mp4").exists() else str(SAMPLE_DIR / "cctv_crowd_demo.mp4")
+    },
+    "cam3": {
+        "id": "cam3",
+        "name": "CAM-03: SHIBUYA CROSSING",
+        "location": "Scramble Pedestrian Zone",
+        "source": str(SAMPLE_DIR / "cctv_shibuya_dense_crossing.mp4") if (SAMPLE_DIR / "cctv_shibuya_dense_crossing.mp4").exists() else str(SAMPLE_DIR / "cctv_crowd_demo.mp4")
+    },
+    "cam4": {
+        "id": "cam4",
+        "name": "CAM-04: PARIS GARE DU NORD",
+        "location": "North Hall Transit Hub",
+        "source": str(SAMPLE_DIR / "cctv_paris_station_rush.mp4") if (SAMPLE_DIR / "cctv_paris_station_rush.mp4").exists() else str(SAMPLE_DIR / "cctv_crowd_demo.mp4")
+    }
 }
 
 # =============================================================================

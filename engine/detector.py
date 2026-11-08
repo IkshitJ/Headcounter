@@ -6,6 +6,7 @@ Wraps YOLO object detection fine-tuned on human heads with automated hardware ac
 import os
 import sys
 import logging
+import threading
 import urllib.request
 from typing import List, Dict, Any, Optional
 import numpy as np
@@ -43,6 +44,7 @@ class HeadDetector:
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         self.device = self._resolve_device(device)
+        self._lock = threading.Lock()
         self.model = None
         self.model_path = ""
         self.load_model(model_name)
@@ -131,14 +133,15 @@ class HeadDetector:
 
         target_classes = MODEL_REGISTRY.get(self.model_name, {}).get("classes", [0])
 
-        results = self.model.predict(
-            source=frame,
-            conf=self.conf_threshold,
-            iou=self.iou_threshold,
-            classes=target_classes,
-            device=self.device,
-            verbose=False
-        )
+        with self._lock:
+            results = self.model.predict(
+                source=frame,
+                conf=self.conf_threshold,
+                iou=self.iou_threshold,
+                classes=target_classes,
+                device=self.device,
+                verbose=False
+            )
 
         detections = []
         if not results or len(results) == 0:

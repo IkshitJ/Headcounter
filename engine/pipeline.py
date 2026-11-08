@@ -46,18 +46,26 @@ class VideoPipeline:
         model_name: str = DEFAULT_MODEL,
         conf_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
         iou_threshold: float = DEFAULT_IOU_THRESHOLD,
-        device: Optional[str] = ACCELERATOR_DEVICE
+        device: Optional[str] = ACCELERATOR_DEVICE,
+        detector: Optional[HeadDetector] = None,
+        camera_id: str = "cam1",
+        camera_name: str = "CCTV Camera"
     ):
         self.source = source
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
+        self.camera_id = camera_id
+        self.camera_name = camera_name
 
-        self.detector = HeadDetector(
-            model_name=model_name,
-            conf_threshold=conf_threshold,
-            iou_threshold=iou_threshold,
-            device=device
-        )
+        if detector is not None:
+            self.detector = detector
+        else:
+            self.detector = HeadDetector(
+                model_name=model_name,
+                conf_threshold=conf_threshold,
+                iou_threshold=iou_threshold,
+                device=device
+            )
         self.tracker = HeadTracker()
         self.counter = HeadCounter()
         self.raw_counting_line: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None
@@ -322,10 +330,10 @@ class VideoPipeline:
                 cv2.putText(frame, flow_str, (460, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
 
             # CCTV Live Recording Status
-            status_str = "REC [1080P HD]"
-            (pw, _), _ = cv2.getTextSize(status_str, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.circle(frame, (w - pw - 28, 30), 4, (240, 240, 240), -1)
-            cv2.putText(frame, status_str, (w - pw - 18, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1, cv2.LINE_AA)
+            status_str = f"REC [{self.camera_name}]"
+            (pw, _), _ = cv2.getTextSize(status_str, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
+            cv2.circle(frame, (w - pw - 24, 30), 4, (0, 0, 255), -1)  # Red recording dot
+            cv2.putText(frame, status_str, (w - pw - 14, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (220, 220, 220), 1, cv2.LINE_AA)
 
         return frame
 
