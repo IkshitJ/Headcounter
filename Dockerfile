@@ -16,7 +16,10 @@ USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
-    PORT=7860
+    PORT=7860 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    CUDA_VISIBLE_DEVICES=""
 
 WORKDIR $HOME/app
 

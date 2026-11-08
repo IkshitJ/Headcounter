@@ -5,6 +5,12 @@ per-camera head counting & overcrowding alerts, interactive tripwire & ROI, and 
 """
 
 import os
+# Prevent OpenMP and threading conflicts on cloud containers
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 import io
 import time
 import shutil
@@ -39,49 +45,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("HeadCounterApp")
 
 
-class CameraWorker:
-    """
-    Dedicated background worker for each CCTV camera channel.
-    Continuously samples and annotates frames at a target frame rate, keeping
-    the latest JPEG frame and metrics cached in memory for instantaneous zero-latency streaming.
-    """
-    def __init__(self, pipeline: VideoPipeline, target_fps: float = 12.0):
-        self.pipeline = pipeline
-        self.target_fps = target_fps
-        self.latest_frame: bytes = b""
-        self.lock = threading.Lock()
-        self.is_running = True
-        self.thread = threading.Thread(target=self._worker_loop, daemon=True)
-        self.thread.start()
-
-    def _worker_loop(self):
-        interval = 1.0 / self.target_fps
-        while self.is_running:
-            t0 = time.time()
-            try:
-                frame_bytes = self.pipeline.get_current_frame_jpeg()
-                if frame_bytes:
-                    with self.lock:
-                        self.latest_frame = frame_bytes
-            except Exception as e:
-                logger.error(f"Error in {self.pipeline.camera_id} worker loop: {e}")
-            elapsed = time.time() - t0
-            sleep_t = max(0.005, interval - elapsed)
-            time.sleep(sleep_t)
-
-    def get_frame(self) -> bytes:
-        with self.lock:
-            return self.latest_frame
-
-    def stop(self):
-        self.is_running = False
-
-
 class CameraManager:
     """
     Manages all CCTV camera streams simultaneously.
     Shares a single HeadDetector instance across all pipelines to ensure efficient memory usage
     while maintaining independent tracking, counts, tripwires, and ROI zones per camera.
+    Uses on-demand frame retrieval with high-frequency caching so that inference runs only when
+    viewed, completely eliminating background thread locks, OpenMP segfaults, and CPU starvation.
     """
     def __init__(self):
         logger.info("Initializing Shared HeadDetector for Multi-Camera CCTV Grid...")
@@ -92,7 +62,9 @@ class CameraManager:
             device=ACCELERATOR_DEVICE
         )
         self.pipelines: Dict[str, VideoPipeline] = {}
-        self.workers: Dict[str, CameraWorker] = {}
+        self.cached_frames: Dict[str, bytes] = {}
+        self.last_update_time: Dict[str, float] = {}
+        self.locks: Dict[str, threading.Lock] = {}
 
         for cam_id, cfg in QUAD_CAMERAS.items():
             source_path = cfg["source"]
@@ -110,25 +82,40 @@ class CameraManager:
             )
             pipe.open_source(source_path)
             self.pipelines[cam_id] = pipe
-            self.workers[cam_id] = CameraWorker(pipe, target_fps=12.0)
-            logger.info(f"Initialized Camera Channel {cam_id}: {cfg['name']} -> {source_path}")
+            self.cached_frames[cam_id] = b""
+            self.last_update_time[cam_id] = 0.0
+            self.locks[cam_id] = threading.Lock()
+            logger.info(f"Initialized Camera Channel {cam_id}: {cfg['name']}")
 
     def get_pipeline(self, cam_id: str = "cam1") -> VideoPipeline:
         return self.pipelines.get(cam_id, self.pipelines.get("cam1"))
 
     def get_frame(self, cam_id: str = "cam1") -> bytes:
-        worker = self.workers.get(cam_id)
-        if worker:
-            frame = worker.get_frame()
-            if frame:
-                return frame
         pipe = self.get_pipeline(cam_id)
-        return pipe.get_current_frame_jpeg() if pipe else b""
+        if not pipe:
+            return b""
+
+        lock = self.locks.get(cam_id)
+        with lock:
+            now = time.time()
+            # Cache for 40ms (~25 FPS max) to prevent duplicate work if multiple clients poll
+            if self.cached_frames[cam_id] and (now - self.last_update_time[cam_id] < 0.04):
+                return self.cached_frames[cam_id]
+
+            try:
+                frame_bytes = pipe.get_current_frame_jpeg()
+                if frame_bytes:
+                    self.cached_frames[cam_id] = frame_bytes
+                    self.last_update_time[cam_id] = now
+                    return frame_bytes
+            except Exception as e:
+                logger.error(f"Error reading frame for {cam_id}: {e}")
+
+            return self.cached_frames.get(cam_id, b"")
 
     def stream_generator(self, cam_id: str = "cam1"):
-        worker = self.workers.get(cam_id)
         while True:
-            frame_bytes = worker.get_frame() if worker else b""
+            frame_bytes = self.get_frame(cam_id)
             if frame_bytes:
                 yield (
                     b"--frame\r\n"
@@ -523,15 +510,6 @@ def get_last_analysis():
     if _last_analysis is None:
         raise HTTPException(status_code=404, detail="No analysis has been run yet")
     return _last_analysis
-
-
-# Optional Gradio mount to support free Hugging Face Spaces (no paywall)
-try:
-    import gradio as gr
-    demo = gr.Blocks(title="CCTV Multi-Feed Head Counter")
-    app = gr.mount_gradio_app(app, demo, path="/_gradio")
-except Exception:
-    pass
 
 
 if __name__ == "__main__":
