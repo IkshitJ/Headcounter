@@ -525,6 +525,17 @@ def get_last_analysis():
     return _last_analysis
 
 
+# Optional Gradio mount to support free Hugging Face Spaces (no paywall)
+try:
+    import gradio as gr
+    demo = gr.Blocks(title="CCTV Multi-Feed Head Counter")
+    app = gr.mount_gradio_app(app, demo, path="/_gradio")
+except Exception:
+    pass
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host=SERVER_HOST, port=SERVER_PORT, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
+
