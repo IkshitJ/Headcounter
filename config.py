@@ -28,7 +28,7 @@ SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
 # 1. SERVER & NETWORK SETTINGS
 # =============================================================================
 SERVER_HOST = "0.0.0.0"      # "0.0.0.0" listens on all network interfaces
-SERVER_PORT = int(os.environ.get("PORT", 8000))  # Port 8000 by default (or env PORT in cloud/Docker)
+SERVER_PORT = int(os.environ.get("PORT", 7860))  # Port 7860 for Hugging Face Spaces (or PORT env var)
 
 # =============================================================================
 # 2. DEFAULT VIDEO INPUT SOURCE
