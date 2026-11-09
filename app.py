@@ -512,34 +512,6 @@ def get_last_analysis():
     return _last_analysis
 
 
-@app.get("/dashboard", response_class=FileResponse)
-async def serve_dashboard():
-    """Serves the main CCTV Surveillance Web Dashboard for iframe mounting."""
-    index_file = os.path.join(TEMPLATES_DIR, "index.html")
-    return FileResponse(index_file)
-
-
-# Gradio Wrapper for Hugging Face Spaces & ZeroGPU compatibility
-try:
-    import gradio as gr
-    with gr.Blocks(
-        title="CCTV Multi-Feed Live Head Counter",
-        fill_width=True,
-        css="""
-        footer {display: none !important;}
-        .gradio-container {padding: 0 !important; max-width: 100% !important; margin: 0 !important; background: #000 !important;}
-        body {background-color: #000 !important; margin: 0 !important;}
-        """
-    ) as demo:
-        gr.HTML("""
-        <iframe src="/dashboard" style="width: 100vw; height: 96vh; border: none; overflow: hidden;" allow="camera; microphone; autoplay"></iframe>
-        """)
-
-    app = gr.mount_gradio_app(app, demo, path="/")
-except Exception as e:
-    logger.warning(f"Gradio mount skipped: {e}")
-
-
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 7860))
